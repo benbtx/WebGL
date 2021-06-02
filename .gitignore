@@ -1,10 +1,9 @@
 .DS_Store
 node_modules
-/ppt
-/代码
 /dist
 /d3-01
 /附赠资料
+*/课件
 
 # local env files
 .env.local
