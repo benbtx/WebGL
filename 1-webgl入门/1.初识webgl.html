@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HTML5-WebGL</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: indigo;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="canvas" width="300" height="150">
+        对不起！当您能看到这句话时，表示您当前的浏览器不支持canvas标签（IE9级以上才兼容），建议您升级浏览器后再试！
+        canvas尺寸：默认大小：宽300px, 高150px，最大尽量在4096px以内（当然不同的浏览器也会不一样）；
+        canvas尺寸设置：建议直接在canvas标签上设置，或者是在js中的canvas.width/height上设置，不建议在CSS样式中设置，但（在CSS中的优先级最高）；
+
+        Canvas的精彩：
+        Canvas精彩之处在于程序算法和艺术的结合。
+        它可以用理性的逻辑算法来寻找艺术中美的规律。
+        若想深入研究Canvas，可以再学习图形架构、图像算法、动画算法、艺术设计等。
+    </canvas>
+
+    <script type="module">
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        const [width, height] = [window.innerWidth, window.innerHeight];
+
+        // 设置画布宽高
+        canvas.width = width;
+        canvas.height = height;
+
+        // 获取canvas二维绘图上下文对象
+        // const ctx = canvas.getContext('2d');
+        // console.dir(ctx);
+
+        // 注：canvas.getContext('2d') 和 canvas.getContext('webgl') 不可并存，它们谁在前，谁优先！！
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+        console.dir(gl);
+
+        // 设置清空绘图区的颜色
+        // gl.clearColor(red, green, blue, alpha);
+        gl.clearColor(0, 1, 0, 1);
+        console.log(gl.clear);
+
+        // 使用上面设置的颜色，清空绘图区
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
+    </script>
+</body>
