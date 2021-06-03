@@ -35,9 +35,6 @@
         Canvas精彩之处在于程序算法和艺术的结合。
         它可以用理性的逻辑算法来寻找艺术中美的规律。
         若想深入研究Canvas，可以再学习图形架构、图像算法、动画算法、艺术设计等。
-
-        相关文档：http://www.webgl3d.cn
-        相关库：https://threejs.org/
     </canvas>
 
     <script type="module">
@@ -50,12 +47,6 @@
         canvas.width = width;
         canvas.height = height;
 
-        // 获取canvas二维绘图上下文对象
-        // const ctx = canvas.getContext('2d');
-        // console.dir(ctx);
-
-        // 注：canvas.getContext('2d') 和 canvas.getContext('webgl') 不可并存，它们谁在前，谁优先！！
-
         // 获取webgl 三维绘图上下文对象
         const gl = canvas.getContext('webgl');
         console.dir(gl);
@@ -67,6 +58,57 @@
 
         // 使用上面设置的颜色，清空绘图区
         gl.clear(gl.COLOR_BUFFER_BIT);
+
+
+
+        /**
+         * css颜色转webgl颜色
+        */
+
+        // css颜色 红色
+        const cssRgba = 'rgba(255, 100, 0, 0.8)';
+
+        // 用正则以数组获取rgba()中的颜色值
+        const regColor = RegExp(/\((.*)\)/);
+        const rgbaStr = regColor.exec(cssRgba);
+        console.log(rgbaStr[1]); //'255, 0, 0, 1'
+
+        // 将获取到的颜色值字符串 转为 数字数组
+        // const rgbaArr = rgbaStr[1].split(',').map(str => parseInt(str));
+        const rgbaArr = rgbaStr[1].split(',').map(str => parseFloat(str));
+        console.log(rgbaArr);
+
+        // 由于在webgl中rgba()的值是 0 到 1 之前，而css中rgba()的值是 0 到255，所以还要再转换一下
+        const [r, g, b, a] = [rgbaArr[0] / 255, rgbaArr[1] / 255, rgbaArr[2] / 255, rgbaArr[3]];
+
+        console.log('webgl中的rgba：', r, g, b, a);
+        // 然后将
+        gl.clearColor(r, g, b, a);
+
+        // 使用上面设置的颜色，清空绘图区
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+
+
+        /**
+         *  相关库
+         *  http://www.webgl3d.cn/
+         *  https://threejs.org/
+        */
+        // 转换函数封装， 在Three.js库中的color对象 
+        function CssToWebGlColor(rgba) {
+            const rgbaStr = /\((.*)\)/.exec(rgba);
+            const rgbaArr = rgbaStr[1].split(',').map(str => parseFloat(str));
+            return [rgbaArr[0] / 255, rgbaArr[1] / 255, rgbaArr[2] / 255, rgbaArr[3]];
+        };
+
+        // 调用封装函数
+        let rgba = 'rgba(0, 0, 255 0.8)';
+        gl.clearColor(...CssToWebGlColor(rgba));
+
+        // 使用上面设置的颜色，清空绘图区
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
 
     </script>
 </body>

@@ -35,12 +35,12 @@
         Canvas精彩之处在于程序算法和艺术的结合。
         它可以用理性的逻辑算法来寻找艺术中美的规律。
         若想深入研究Canvas，可以再学习图形架构、图像算法、动画算法、艺术设计等。
-
-        相关文档：http://www.webgl3d.cn
-        相关库：https://threejs.org/
     </canvas>
 
     <script type="module">
+        // import { Color } from 'https://unpkg.com/three@0.129.0/build/three.module.js'; // 注：在Node.js中不能这样用CDN加载哦！！
+        import { Color } from './js/three@0.129.0.module.js';
+
 
         // 获取画布DOM
         const canvas = document.querySelector('#canvas');
@@ -49,12 +49,6 @@
         // 设置画布宽高
         canvas.width = width;
         canvas.height = height;
-
-        // 获取canvas二维绘图上下文对象
-        // const ctx = canvas.getContext('2d');
-        // console.dir(ctx);
-
-        // 注：canvas.getContext('2d') 和 canvas.getContext('webgl') 不可并存，它们谁在前，谁优先！！
 
         // 获取webgl 三维绘图上下文对象
         const gl = canvas.getContext('webgl');
@@ -67,6 +61,60 @@
 
         // 使用上面设置的颜色，清空绘图区
         gl.clear(gl.COLOR_BUFFER_BIT);
+
+
+
+        /**
+         * 自己封装的转换函数： css颜色转webgl颜色
+        */
+        // 
+        function CssToWebGlColor(rgba) {
+            const rgbaStr = /\((.*)\)/.exec(rgba);
+            const rgbaArr = rgbaStr[1].split(',').map(str => parseFloat(str));
+            return [rgbaArr[0] / 255, rgbaArr[1] / 255, rgbaArr[2] / 255, rgbaArr[3]];
+        };
+
+        // 调用封装函数
+        let rgba = 'rgba(255, 0, 0 1)';
+        gl.clearColor(...CssToWebGlColor(rgba));
+
+        // 使用上面设置的颜色，清空绘图区
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+
+
+
+        /**
+         *  使用第三方库 Three.js中的Color类 来做 css颜色转webgl颜色
+         *  https://threejs.org/docs/index.html#api/zh/math/Color
+        */
+
+        let rgba2 = 'rgba(0, 0, 255, 1)';
+        const color = new Color(rgba2);
+        console.log('new Color', color);    // 注：Color对象中没有 a 哦！！
+
+        gl.clearColor(color.r, color.g, color.b, 1);
+
+        // 使用上面设置的颜色，清空绘图区
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+
+
+
+        /**
+         * 实例：多彩画布（使用第三方库中Color对象的颜色偏移方法offsetHSL()）
+        */
+
+        !(function render() {
+            //  color对象中的offsetHSL(色相，饱和度，亮度)方法
+            // color.offsetHSL(0.05, 0, 0); // 这里只偏移色相
+            color.offsetHSL(0.005, 0, 0); // 这里只偏移色相 
+
+            gl.clearColor(color.r, color.g, color.b, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            requestAnimationFrame(render);
+        })();
 
     </script>
 </body>

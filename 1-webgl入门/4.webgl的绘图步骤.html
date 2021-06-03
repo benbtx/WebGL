@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HTML5-WebGL</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: indigo;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <img src="./img/webgl坐标系.png" alt="" />
+    <canvas id="canvas" width="300" height="150">
+        对不起！当您能看到这句话时，表示您当前的浏览器不支持canvas标签（IE9级以上才兼容），建议您升级浏览器后再试！
+        canvas尺寸：默认大小：宽300px, 高150px，最大尽量在4096px以内（当然不同的浏览器也会不一样）；
+        canvas尺寸设置：建议直接在canvas标签上设置，或者是在js中的canvas.width/height上设置，不建议在CSS样式中设置，但（在CSS中的优先级最高）；
+
+        Canvas的精彩：
+        Canvas精彩之处在于程序算法和艺术的结合。
+        它可以用理性的逻辑算法来寻找艺术中美的规律。
+        若想深入研究Canvas，可以再学习图形架构、图像算法、动画算法、艺术设计等。
+    </canvas>
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        void main() {
+            // 点位 
+            gl_Position = vec4(0.0, 0.0, 0.0, 1.0); // 四维向量 x, y, z  注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！
+
+            // 尺寸
+            gl_PointSize = 80.0;
+        } //; 注： 这里main函数后面不要加分号;否则显示不出来！！！
+    </script>
+
+    <!-- 片元着色器-内容装饰 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        void main() {
+            // 设置片元色
+            gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0); //  紫色 r, b, b, a 
+        } //; 注： 这里不要加分号;否则显示不出来！！！
+    </script>
+
+    <script type="module">
+
+        function loadShader(gl, type, source) {
+            //根据着色类型，建立着色器对象
+            const shader = gl.createShader(type);
+            //将着色器源文件传入着色器对象中
+            gl.shaderSource(shader, source);
+            //编译着色器对象
+            gl.compileShader(shader);
+            //返回着色器对象
+            return shader;
+        };
+
+        // 初始化着色器 功能：解析着色器文本，整合到程序对象里，关联webgl上下文对象，实现两种语言的相互通信
+        function initShaders(gl, vsSource, fsSource) {
+            //创建程序对象
+            const program = gl.createProgram();
+            //建立着色对象
+            const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+            //把顶点着色对象装进程序对象中
+            gl.attachShader(program, vertexShader);
+            //把片元着色对象装进程序对象中
+            gl.attachShader(program, fragmentShader);
+            //连接webgl上下文对象和程序对象
+            gl.linkProgram(program);
+            //启动程序对象
+            gl.useProgram(program);
+            //将程序对象挂到上下文对象上
+            gl.program = program;
+            return true;
+        };
+
+    </script>
+</body>
