@@ -25,6 +25,9 @@
 </head>
 
 <body>
+    <img src="./img/用鼠标控制点位.jpg" alt="" />
+    <img src="./img/Canvas坐标系转WebGl坐标系.jpg" alt="" />
+    <img src="./img/webgl坐标系.png" alt="" />
     <canvas id="canvas" width="300" height="150">
         对不起！当您能看到这句话时，表示您当前的浏览器不支持canvas标签（IE9级以上才兼容），建议您升级浏览器后再试！
         canvas尺寸：默认大小：宽300px, 高150px，最大尽量在4096px以内（当然不同的浏览器也会不一样）；
@@ -43,8 +46,9 @@
     -->
     <!-- 顶点着色器-主体架构 -->
     <script id="vertexShader" type="x-shader/x-vertex">
-        // 声明项点位置变量（也就是向外部JS暴露变量） 
-        attribute vec4 my_Position;  
+        // 声明项点位置变量   attribute是用于在顶点着色器中限定顶点相关的数据的
+        attribute vec4 my_Position;
+        attribute float my_PointSize;
 
         /* attribute说明：
             attribute：是用于存储限定符（变量声明关键字），是专门用于向外部导出与点位相磁的对象的，类似于ES6中的export。 
@@ -58,16 +62,22 @@
             gl_Position = my_Position;
 
             // 尺寸
-            gl_PointSize = 120.0; // 注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！
+            gl_PointSize = my_PointSize; // 注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！
 
         } //; 注： 这里main函数后面不要加分号;否则显示不出来！！！
     </script>
 
     <!-- 片元着色器-内容装饰 -->
     <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+
+        // 声明片元变量  uniform是用于在片元着色器中限定片元相关的数据的
+        uniform vec4 my_FragColor;
         void main() {
             // 设置片元色
-            gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); // 紫色 四维向量 r, b, b, a  
+            // gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); // 紫色 四维向量 r, b, b, a  
+            gl_FragColor = my_FragColor; // 紫色 四维向量 r, b, b, a  
         } //; 注： 这里不要加分号;否则显示不出来！！！
     </script>
 
@@ -88,36 +98,17 @@
         const vsSource = document.querySelector('#vertexShader').innerText;
         const fsSource = document.querySelector('#fragmentShader').innerText;
 
-        // 初始化着色器 生成 关联关系 程序对象
+        // 初始化着色器 生成 关联关系 程序对象gl.program
         initShaders(gl, vsSource, fsSource);
 
-        // 获取顶点着色器存储空间：在JS中要通过gl.getAttribLocation()方法来，获取在顶点着色器中用 attribute 声明的变量 my_Position;
+        // 获取顶点着色器存储空间;
         const my_Position = gl.getAttribLocation(gl.program, 'my_Position');
 
-        // 修改my_Position变量  gl.vertexAttrib4f(index, v0, v1, v2, v3);
-        // gl.vertexAttrib1f(my_Position, 0.5)      // x值越大越向右移
-        // gl.vertexAttrib2f(my_Position, 0, 0.8)   // x, y值越大越向上移
-        gl.vertexAttrib3f(my_Position, 0, 0.5, 0);  // x, y, z景深  
-        // gl.vertexAttrib4f(index, v0, v1, v2, v3);
+        // 获取顶点着色器存储空间;
+        const my_PointSize = gl.getAttribLocation(gl.program, 'my_PointSize');
 
-
-        /**
-         * GLSL ES 语法中，函数的使用规律！！
-         *      函数结构：<函数名><参数个数><参数类型：f表示float浮点数据，i表示int整数，v表示数字>
-         * 例如：
-         *      gl.vertexAttrib1f(index, v0);
-         *      gl.vertexAttrib2f(index, v0, v1);
-         *      gl.vertexAttrib3f(index, v0, v1, v2);
-         *      gl.vertexAttrib4f(index, v0, v1, v2, v3);
-         * 
-        */
-
-
-        // 设置清空绘图区的颜色
-        gl.clearColor(0, 1, 0, 1);
-
-        // 使用上面设置的颜色，清空绘图区
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        // 获取片元着色器存储空间;
+        const my_FragColor = gl.getUniformLocation(gl.program, 'my_FragColor');
 
         /**
          * 绘制顶点
@@ -138,22 +129,75 @@
                 first 指定从哪个点开始绘制。
                 count 指定绘制需要使用到多少个点。
         */
-        gl.drawArrays(gl.POINTS, 0, 1);
 
-        // 绘制第2个
-        gl.vertexAttrib2f(my_Position, 0, 0.2);
-        gl.drawArrays(gl.POINTS, 0, 1);
 
-        // 绘制第3个
-        gl.vertexAttrib2f(my_Position, 0, -0.1);
-        gl.drawArrays(gl.POINTS, 0, 1);
+        // 解决异步会图清除问题(就是把之前会制的点位，存起来，等一下次绘图时一并绘制！！)，
+        const posArr = [{ x: 0, y: 0, s: 50, c: { r: 1.0, g: 0.0, b: 0.0, a: 1.0 } }];
 
-        gl.vertexAttrib2f(my_Position, 0.15, 0.2);
-        gl.drawArrays(gl.POINTS, 0, 1);
+        // 渲染绘制方法
+        function render() {
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            posArr.forEach(({ x, y, s, c: { r, g, b, a } }) => {
+                // 修改顶点位置
+                gl.vertexAttrib2f(my_Position, x, y);
 
-        gl.vertexAttrib2f(my_Position, -0.15, 0.2);
-        gl.drawArrays(gl.POINTS, 0, 1);
+                // 修改顶点尺寸
+                gl.vertexAttrib1f(my_PointSize, s);
 
+                // 修改片元颜色
+                // gl.uniform4f(my_FragColor, 1.0, 0.0, 0.0, 1.0);  // r, g, b, a  红色，不透明
+                // gl.uniform4f(my_FragColor, r, g, b, a);
+                const rgba = new Float32Array([r, g, b, a]);
+                console.log(rgba)
+                gl.uniform4fv(my_FragColor, rgba);
+
+                // 执行绘制
+                gl.drawArrays(gl.POINTS, 0, 1);
+            });
+        };
+
+        render();
+
+        // 鼠标在Canvas画布中的点击事件
+        canvas.addEventListener('click', function ({ clientX, clientY }) {
+            const { left, top, width, height } = canvas.getBoundingClientRect();
+            const [cssX, cssY] = [clientX - left, clientY - top];
+            const [halfWidth, halfHeight] = [width / 2, height / 2];
+            const [xBaseCenter, yBaseCenter] = [cssX - halfWidth, cssY - halfHeight];
+            const yBaseCenterTop = -yBaseCenter;
+            const [x, y] = [xBaseCenter / halfWidth, yBaseCenterTop / halfHeight];
+
+            posArr.push({
+                x, y,
+                s: Math.random() * 100 + 10,
+                c: {
+                    r: Math.random() * 245 + 10,
+                    g: Math.random() * 245 + 10,
+                    b: Math.random() * 245 + 10,
+                    a: Math.random()
+                }
+            });
+            console.log(posArr);
+            render();
+        });
+
+        /*
+        * WebGl 同步绘图原理总结!!!
+        *
+        *   webgl 的同步绘图的现象，其实是由webgl 底层内置的颜色缓冲区导致的。
+        *
+        *   “胸有成竹”大家知道吧？这个颜色缓冲区就是“胸有成竹”的胸，它在电脑里会占用一块内存。
+        *
+        *   在我们使用webgl 绘图的时候，是先在颜色缓冲区中画出来，这样的图像还在胸中，所以外人看不见，只有webgl系统自己知道。
+        *
+        *   在我们想要将图像显示出来的时候，那就照着颜色缓冲区中的图像去画，这个步骤是webgl 内部自动完成的，我们只要执行绘图命令即可。
+        *
+        *    颜色缓冲区中存储的图像，只在当前线程有效。比如我们先在js 主线程中绘图，主线程结束后，会再去执行信息队列里的异步线程。
+        *
+        *   在执行异步线程时，颜色缓冲区就会被webgl 系统重置，我们曾经在主线程里的“胸有成竹”也就没了，既然没了，也就画不出那时的图像了。
+        *
+        *   webgl 绘图原理我就说到这。接下来咱们用js控制顶点尺寸。
+        */
 
     </script>
 </body>

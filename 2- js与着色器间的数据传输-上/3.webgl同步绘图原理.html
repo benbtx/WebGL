@@ -25,6 +25,9 @@
 </head>
 
 <body>
+    <img src="./img/用鼠标控制点位.jpg" alt="" />
+    <img src="./img/Canvas坐标系转WebGl坐标系.jpg" alt="" />
+    <img src="./img/webgl坐标系.png" alt="" />
     <canvas id="canvas" width="300" height="150">
         对不起！当您能看到这句话时，表示您当前的浏览器不支持canvas标签（IE9级以上才兼容），建议您升级浏览器后再试！
         canvas尺寸：默认大小：宽300px, 高150px，最大尽量在4096px以内（当然不同的浏览器也会不一样）；
@@ -43,7 +46,7 @@
     -->
     <!-- 顶点着色器-主体架构 -->
     <script id="vertexShader" type="x-shader/x-vertex">
-        // 声明项点位置变量（也就是向外部JS暴露变量） 
+        // 声明项点位置变量   
         attribute vec4 my_Position;  
 
         /* attribute说明：
@@ -58,7 +61,7 @@
             gl_Position = my_Position;
 
             // 尺寸
-            gl_PointSize = 120.0; // 注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！
+            gl_PointSize = 50.0; // 注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！
 
         } //; 注： 这里main函数后面不要加分号;否则显示不出来！！！
     </script>
@@ -96,8 +99,8 @@
 
         // 修改my_Position变量  gl.vertexAttrib4f(index, v0, v1, v2, v3);
         // gl.vertexAttrib1f(my_Position, 0.5)      // x值越大越向右移
-        // gl.vertexAttrib2f(my_Position, 0, 0.8)   // x, y值越大越向上移
-        gl.vertexAttrib3f(my_Position, 0, 0.5, 0);  // x, y, z景深  
+        gl.vertexAttrib2f(my_Position, 0, 0.5)      // x, y值越大越向上移
+        // gl.vertexAttrib3f(my_Position, 0, 0.5, 0);  // x, y, z景深  
         // gl.vertexAttrib4f(index, v0, v1, v2, v3);
 
 
@@ -114,7 +117,7 @@
 
 
         // 设置清空绘图区的颜色
-        gl.clearColor(0, 1, 0, 1);
+        gl.clearColor(0, 0, 0, 1);
 
         // 使用上面设置的颜色，清空绘图区
         gl.clear(gl.COLOR_BUFFER_BIT);
@@ -144,16 +147,94 @@
         gl.vertexAttrib2f(my_Position, 0, 0.2);
         gl.drawArrays(gl.POINTS, 0, 1);
 
-        // 绘制第3个
-        gl.vertexAttrib2f(my_Position, 0, -0.1);
-        gl.drawArrays(gl.POINTS, 0, 1);
+        setTimeout(() => {
+            // 绘制第3个
+            gl.vertexAttrib2f(my_Position, 0, -0.1);
+            gl.drawArrays(gl.POINTS, 0, 1);
 
-        gl.vertexAttrib2f(my_Position, 0.15, 0.2);
-        gl.drawArrays(gl.POINTS, 0, 1);
+            console.warn('啊偶，之前画的被清掉了，杂整呢？')
+            /**
+             * 注：gl.drawArrays(gl.POINTS, 0, 1) 方法和canvas 2d 里的ctx.draw() 方法是不一样的，ctx.draw() 真的像画画一样，一层一层的覆盖图像。
+             * gl.drawArrays() 方法只会同步绘图，走完了js 主线程后，再次绘图时，就会从头再来。也就说，异步执行的drawArrays() 方法会把画布上的图像都刷掉。
+            */
 
-        gl.vertexAttrib2f(my_Position, -0.15, 0.2);
-        gl.drawArrays(gl.POINTS, 0, 1);
+        }, 1000);
 
+        // 解决异步会图清除问题(就是把之前会制的点位，存起来，等一下次绘图时一并绘制！！)，
+        const posArr = [
+            { x: 0, y: 0.5 },
+            { x: 0, y: 0.2 },
+            { x: 0, y: -0.1 }
+        ];
+
+        // 渲染绘制方法
+        function render() {
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            posArr.forEach(({ x, y }) => {
+                gl.vertexAttrib2f(my_Position, x, y);
+                gl.drawArrays(gl.POINTS, 0, 1);
+            });
+        };
+
+
+        /**
+         * Canvas 坐标系转 WebGl 坐标系
+         *  注：
+         *      1、webgl坐标系的坐标原点在画布中心。
+         *      2、webgl坐标系的y 轴方向是朝上的。
+         *      3、webgl坐标基底中的两个分量分别是半个canvas的宽和canvas的高，即1个单位的宽便是半个个canvas的宽，1个单位的高便是半个canvas的高。
+        */
+
+        // 鼠标在Canvas画布中的点击事件
+        canvas.addEventListener('click', function ({ clientX, clientY }) {
+            // console.log(clientX, clientY);
+
+            // 1、获取鼠标在canvas 画布中的css 位置
+            const { left, top, width, height } = canvas.getBoundingClientRect();
+            const [cssX, cssY] = [clientX - left, clientY - top];
+            console.log('鼠标在canvas 画布中的css 位置:', cssX, cssY);
+
+            // 2、解决坐标原点位置的差异
+            const [halfWidth, halfHeight] = [width / 2, height / 2]; // 这是canvas 画布中心的位置
+            const [xBaseCenter, yBaseCenter] = [cssX - halfWidth, cssY - halfHeight]; // 用鼠标位减去canvas 画布的中心位，得到的就是鼠标基于画布中心的位置。
+            console.log('坐标原点位置的差异:', xBaseCenter, xBaseCenter);
+
+            // 3、解决y 方向的差异(因为在canvas中的y是向下的，而在webgl中的y是向上的，所要做一下取反)。
+            const yBaseCenterTop = -yBaseCenter;
+
+            // 4、解决坐标基底的差异。
+            const [x, y] = [xBaseCenter / halfWidth, yBaseCenterTop / halfHeight];
+            console.log('Canvas 坐标系转 WebGl 坐标系：', x, y);
+
+            posArr.push({ x, y });
+            render();
+
+            console.log(posArr);
+
+            // 用鼠标控制点位
+            // gl.vertexAttrib2f(my_Position, x, y);
+            // gl.clear(gl.COLOR_BUFFER_BIT);
+            // gl.drawArrays(gl.POINTS, 0, 1);
+        });
+
+
+        /*
+        * WebGl 同步绘图原理总结!!!
+        *
+        *   webgl 的同步绘图的现象，其实是由webgl 底层内置的颜色缓冲区导致的。
+        *
+        *   “胸有成竹”大家知道吧？这个颜色缓冲区就是“胸有成竹”的胸，它在电脑里会占用一块内存。
+        *           
+        *   在我们使用webgl 绘图的时候，是先在颜色缓冲区中画出来，这样的图像还在胸中，所以外人看不见，只有webgl系统自己知道。
+        *
+        *   在我们想要将图像显示出来的时候，那就照着颜色缓冲区中的图像去画，这个步骤是webgl 内部自动完成的，我们只要执行绘图命令即可。
+        *
+        *    颜色缓冲区中存储的图像，只在当前线程有效。比如我们先在js 主线程中绘图，主线程结束后，会再去执行信息队列里的异步线程。
+        *           
+        *   在执行异步线程时，颜色缓冲区就会被webgl 系统重置，我们曾经在主线程里的“胸有成竹”也就没了，既然没了，也就画不出那时的图像了。
+        *
+        *   webgl 绘图原理我就说到这。接下来咱们用js控制顶点尺寸。
+        */
 
     </script>
 </body>
