@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HTML5-WebGL-绘制星空</title>
+    <title>HTML5-WebGL-绘制面-三角带</title>
     <style>
         body {
             margin: 0;
@@ -16,10 +16,7 @@
         #canvas {
             /* width: 100vw;
             height: 100vh; */
-            background: url('./img/astro-mona.png'), url('./img/sky.jpg');
-            background-repeat: no-repeat, no-repeat;
-            background-position: right bottom, center center;
-            background-size: 16%, cover;
+            background-color: purple;
 
             /*点击穿透*/
             /* pointer-events: none; */
@@ -28,6 +25,7 @@
 </head>
 
 <body>
+    <img src="./img/webgl的基本图形绘制.jpg" alt="" />
     <canvas id="canvas" width="300" height="150">
         对不起！当您能看到这句话时，表示您当前的浏览器不支持canvas标签（IE9级以上才兼容），建议您升级浏览器后再试！
         canvas尺寸：默认大小：宽300px, 高150px，最大尽量在4096px以内（当然不同的浏览器也会不一样）；
@@ -50,21 +48,15 @@
         attribute vec4 my_Position;
         attribute float my_PointSize;
 
-        /* attribute说明：
-            attribute：是用于存储限定符（变量声明关键字），是专门用于向外部导出与点位相磁的对象的，类似于ES6中的export。 
-            vec4：变量类型，vec4是4维矢量对象
-            my_Position：变量名，在JS中会根据这个变量名导入变量。这个变量是一个指针，它在内存中是指向实际数据的存储位置，当我们在JS中修改了对应的值，那么在着色器中所对应的数据也会实修改。
-        */
-
         void main() {
             // 点位            x,   y,   Z 
             // gl_Position = vec4(0.0, 0.0, 0.0, 1.0); // 四维向量 x值越大越向右移, y值越大越向上移, z深度；默认0，0是画布的正中心，值为1 或 -1 时，是高度 或 宽度的一半(还要减去图形的一半)，
             gl_Position = my_Position;
 
-            // 尺寸
-            gl_PointSize = my_PointSize; // 注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！
+            // 尺寸 注：面可不用设置大小
+            // gl_PointSize = my_PointSize; // 注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！
 
-        } //; 注： 这里main函数后面不要加分号;否则显示不出来！！！
+        }
     </script>
 
     <!-- 片元着色器-内容装饰 -->
@@ -76,18 +68,8 @@
         uniform vec4 my_FragColor;
         void main() {
             // 设置片元色
-            // gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); // 紫色 四维向量 r, b, b, a  
-            // gl_FragColor = my_FragColor; // 紫色 四维向量 r, b, b, a  
-
-            // 绘制圆：https://www.khronos.org/registry/OpenGL-Refpages/gl4/
-            float dist = distance(gl_PointCoord, vec2(0.5, 0.5));  // distance(p1, p2) 计算两个点位的距离, gl_PointCoord 片元(像素)在一个点中的位置，此位置是被归一化的
-            // 如果 dist 小于 0.5表示该片元是在圆的范围中
-            if(0.5 > dist) {
-                gl_FragColor = my_FragColor;
-            } else {
-                discard; // 丢弃，即不在片元进行渲染
-            }
-        } //; 注： 这里不要加分号;否则显示不出来！！！
+            gl_FragColor = my_FragColor; // 四维向量 r, b, b, a  
+        }
     </script>
 
     <script type="module">
@@ -103,18 +85,6 @@
         // 获取webgl 三维绘图上下文对象
         const gl = canvas.getContext('webgl');
 
-
-        /**
-         * 开启秀明度
-        */
-        // 1、开启片元的颜色合成功能
-        gl.enable(gl.BLEND);
-
-        // 2、设置片元的合成方式
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-
-
         // 获取着色器文本
         const vsSource = document.querySelector('#vertexShader').innerText;
         const fsSource = document.querySelector('#fragmentShader').innerText;
@@ -122,14 +92,53 @@
         // 初始化着色器 生成 关联关系 程序对象gl.program
         initShaders(gl, vsSource, fsSource);
 
-        // 获取顶点着色器存储空间;
+
+        /**
+         * 如何向点着色器 attribute 变量中写入、绘制多个点
+        */
+
+        // 1、建立顶点数据
+        const vertices = new Float32Array([
+            0.0, 0.3,
+            -0.2, -0.1,
+            0.2, -0.1,
+
+            0.4, 0.3, 
+  
+            0.6, -0.1,
+        ]);
+
+        // 2、建立顶点缓冲区对象
+        const vertexBuffer = gl.createBuffer();
+
+        // 3、绑定缓冲对象  // https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/bindBuffer
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer); // gl.ARRAY_BUFFER 包含顶点属性的Buffer，如顶点坐标，纹理坐标数据或顶点颜色数据。
+
+        // 4、写入数据
+        // gl.bufferData(target, size, srcData Optional, usage, srcOffset, length Optional)
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+
+        // 5、获取顶点着色器存储空间 attribute 中的my_Position变量;
         const my_Position = gl.getAttribLocation(gl.program, 'my_Position');
+
+        // 6、修改attribute 变量
+        // gl.vertexAttribPointer(index, size, type, normalized, stride, offset);
+        gl.vertexAttribPointer(my_Position, 2, gl.FLOAT, false, 0, 0);
+
+        // 7、赋能 批处理
+        gl.enableVertexAttribArray(my_Position);
 
         // 获取顶点着色器存储空间;
         const my_PointSize = gl.getAttribLocation(gl.program, 'my_PointSize');
 
+        // 设置点的大小：面不用设置大小
+        // gl.vertexAttrib1f(my_PointSize, 50);
+
         // 获取片元着色器存储空间;
         const my_FragColor = gl.getUniformLocation(gl.program, 'my_FragColor');
+
+
 
         /**
          * 绘制顶点
@@ -154,59 +163,17 @@
                 count 指定绘制需要使用到多少个点。
         */
 
-        // 解决异步会图清除问题(就是把之前会制的点位，存起来，等一下次绘图时一并绘制！！)，
-        const posArr = [{ x: -0.5, y: 0.5, s: 8, c: { r: 0.88, g: 0.96, b: 1.0, a: 1.0 } }];
+        gl.clearColor(0, 0, 0, 1);
 
-        // 渲染绘制方法
-        function render() {
-            gl.clearColor(0, 0, 0, 0); // 刷底色的时候给一个透明的底色，这样才能看见canvas的css背景
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            posArr.forEach(({ x, y, s, c: { r, g, b, a } }) => {
-                // 修改顶点位置
-                gl.vertexAttrib2f(my_Position, x, y);
+        // 使用上面设置的颜色，清空绘图区
+        gl.clear(gl.COLOR_BUFFER_BIT);
 
-                // 修改顶点尺寸
-                gl.vertexAttrib1f(my_PointSize, s);
+        // 执行绘制
 
-                // 修改片元颜色
-                // gl.uniform4f(my_FragColor, 1.0, 0.0, 0.0, 1.0);  // r, g, b, a  红色，不透明
-                // gl.uniform4f(my_FragColor, r, g, b, a);
+        // gl.TRIANGLE_STRIP：绘制一个三角带。
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 5);
 
-                const rgba = new Float32Array([r, g, b, a]);
-                gl.uniform4fv(my_FragColor, rgba);
 
-                // 执行绘制
-                gl.drawArrays(gl.POINTS, 0, 1);
-            });
-        };
-
-        render();
-
-        // 鼠标在Canvas画布中的点击事件
-        canvas.addEventListener('click', function ({ clientX, clientY }) {
-            const { left, top, width, height } = canvas.getBoundingClientRect();
-            const [cssX, cssY] = [clientX - left, clientY - top];
-            const [halfWidth, halfHeight] = [width / 2, height / 2];
-            const [xBaseCenter, yBaseCenter] = [cssX - halfWidth, cssY - halfHeight];
-            const yBaseCenterTop = -yBaseCenter;
-            const [x, y] = [xBaseCenter / halfWidth, yBaseCenterTop / halfHeight];
-
-            posArr.push({
-                x, y,
-                s: Math.random() * 8 + 2,
-                c: {
-                    // r: (Math.random() * 245 + 10) / 255,
-                    // g: (Math.random() * 245 + 10) / 255,
-                    // b: (Math.random() * 245 + 10) / 255,
-                    r: 0.88,
-                    g: 0.96,
-                    b: 1,
-                    a: Math.random()
-                }
-            });
-            console.log(posArr);
-            render();
-        });
 
         /*
         * WebGl 同步绘图原理总结!!!
