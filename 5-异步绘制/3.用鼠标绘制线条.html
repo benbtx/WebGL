@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML5-WebGL-异步绘制</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: purple;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas" width="300" height="150"></canvas>
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        attribute vec4 my_Position;
+        void main(){
+            gl_Position = my_Position;
+            gl_PointSize = 20.0; // 以px像素为单位，表示宽度 和 高度都是20.0
+        }
+    </script>
+
+    <!-- 片元(像素)着色器-内容装饰 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+        uniform vec4 my_FragColor;
+        void main() {
+            gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+        }
+    </script>
+
+    <script type="module">
+        import { initShaders, getMousePosInWebgl } from './js/webgl@init.js';
+        import Poly from './js/Poly.js';
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+        // 初始化着色器 生成 关联关系 程序对象gl.program
+        initShaders(gl, vsSource, fsSource);
+
+        // 设置颜色
+        gl.clearColor(0, 0, 0, 1);
+
+        // 刷底色
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // 实例化封装好的Poly类
+        const poly = new Poly({
+            gl,
+            types: ['POINTS', 'LINE_STRIP']
+        });
+
+        // canvas.addEventListener('click', (event) => {
+        canvas.addEventListener('mousedown', (event) => {
+            const { x, y } = getMousePosInWebgl(event, canvas);
+            console.log(x, y);
+            poly.addPointsArr(x, y);
+
+            // 刷底色
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            // 绘制顶点
+            poly.draw();
+        });
+
+    </script>
+</body>
+
+</html>

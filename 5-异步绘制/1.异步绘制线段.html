@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML5-WebGL-异步绘制</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: purple;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas" width="300" height="150"></canvas>
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        attribute vec4 my_Position;
+        void main(){
+            gl_Position = my_Position;
+            gl_PointSize = 20.0; // 以px像素为单位，表示宽度 和 高度都是20.0
+        }
+    </script>
+
+    <!-- 片元(像素)着色器-内容装饰 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+         // 设置浮点数据的精度 mediump：中等
+         precision mediump float;
+
+         uniform vec4 my_FragColor;
+        void main() {
+            // gl_FragColor = vec4(1.0, 1.0, 0, 1.0);
+            gl_FragColor = my_FragColor;
+        }
+    </script>
+
+    <script type="module">
+        import { initShaders } from './js/webgl@init.js';
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+        // 初始化着色器 生成 关联关系 程序对象gl.program
+        initShaders(gl, vsSource, fsSource);
+
+
+        // 获取顶点着色器存储空间 attribute 中的my_Position变量;
+        const my_Position = gl.getAttribLocation(gl.program, 'my_Position');
+        // gl.vertexAttrib2f(my_Position, x, y);
+
+        // 获取片元着色器存储空间;
+        const my_FragColor = gl.getUniformLocation(gl.program, 'my_FragColor');
+        gl.uniform4f(my_FragColor, 1.0, 0.0, 0.0, 1.0);
+
+
+        /**
+         * 绘制顶点
+         *  gl.drawArrays(mode, first, count); 方法用于从向量数组中绘制图元。
+         *
+         *  // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/drawArrays
+         *
+         *  参数说明：
+         *      mode 指定绘制图元的方式，可能值如下：
+         *      点：
+         *          gl.POINTS: 绘制一系列点。
+         *      线：
+                    gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
+                    gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
+                    gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
+                面：
+                    gl.TRIANGLE_STRIP：绘制一个三角带。
+                    gl.TRIANGLE_FAN：绘制一个三角扇。
+                    gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
+                
+                first 指定从哪个点开始绘制。
+                count 指定绘制需要使用到多少个点。
+        */
+
+        /**
+         * 建立缓冲对象，并将其绑定到webgl 上下文对象上，然后向其中写入顶点数据。将缓冲对象交给attribute变量，并开启attribute 变量的批处理功能。
+        */
+        // 顶点数据
+        const pointsArr = [0.0, 0.2];
+        // 创建缓冲对象 // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/createBuffer
+        const vertexBuffer = gl.createBuffer();  // 方法可创建并初始化一个用于储存顶点数据或着色数据的WebGLBuffer对象
+        // 绑定缓冲对象 到 webgl 上下文对象中
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+
+        // 向缓冲对象写入(修改)数据
+        // gl.bufferData(target, size, srcData Optional, usage, srcOffset, length Optional)
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pointsArr), gl.STATIC_DRAW);
+
+        // 修改 顶点着色器存储空间 attribute 中的my_Position变量;
+        // gl.vertexAttribPointer(index, size, type, normalized, stride, offset)
+        gl.vertexAttribPointer(my_Position, 2, gl.FLOAT, false, 0, 0);
+
+        // 赋能-批处理（如果有多个顶点时，需要批处理）
+        gl.enableVertexAttribArray(my_Position);
+
+        // 设置颜色
+        gl.clearColor(0, 0, 0, 1);
+        // 刷底色
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        // 绘制顶点
+        gl.drawArrays(gl.POINTS, 0, 1);
+
+
+
+        /**
+         * 异步绘制：
+         *      在项目实战的时候，用户交互事件是必不可少的。因为事件是异步的，所以我们在绘图的时候，必须要考虑异步绘图。
+         *      当缓冲区被绑定在了webgl 上下文对象上后，我们在异步方法里直接对其进行修改即可，顶点着色器在绘图的时候会自动从其中调用数据。
+         *      WebGLBuffer缓冲区中的数据在异步方法里不会被重新置空。
+        */
+        // 异步绘制1 在一秒钟后，向顶点数据中再添加的一个顶点，修改缓冲区数据，然后清理画布，绘制顶点
+        setTimeout(() => {
+            // 重置顶点数据
+            pointsArr.push(-0.2, -0.1);
+            // 修改(覆盖)缓冲对象数据(注：在bufferData里面的数据不会随着异步事件的执行，而被清空！！)
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pointsArr), gl.STATIC_DRAW);
+
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.POINTS, 0, 2);
+        }, 1000);
+
+        // 异步绘制2 在两秒钟后，清理画布，绘制顶点，绘制线条
+        setTimeout(() => {
+            // 刷底色
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            // 绘制顶点
+            gl.drawArrays(gl.POINTS, 0, 2);
+            // 绘制线
+            gl.drawArrays(gl.LINES, 0, 2);
+        }, 2000);
+
+
+    </script>
+</body>
+
+</html>
