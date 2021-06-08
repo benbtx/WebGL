@@ -27,27 +27,29 @@ export default class Poly {
     init() {
         const { gl, size, positionName } = this;
 
-        // 创建缓冲对象 // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/createBuffer
-        const vertexBuffer = gl.createBuffer();  // 方法可创建并初始化一个用于储存顶点数据或着色数据的WebGLBuffer对象
-        // 绑定缓冲对象 到 webgl 上下文对象中
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        if (gl) {
+            // 创建缓冲对象 // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/createBuffer
+            const vertexBuffer = gl.createBuffer();  // 方法可创建并初始化一个用于储存顶点数据或着色数据的WebGLBuffer对象
+            // 绑定缓冲对象 到 webgl 上下文对象中
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 
-        this.updateBuffer();
+            this.updateBuffer();
 
-        // 获取顶点着色器存储空间 attribute 中gl_Position声明的的my_Position变量;
-        const gl_Position = gl.getAttribLocation(gl.program, positionName);
+            // 获取顶点着色器存储空间 attribute 中gl_Position声明的的my_Position变量;
+            const gl_Position = gl.getAttribLocation(gl.program, positionName);
 
-        // 修改 顶点着色器存储空间 变量;
-        gl.vertexAttribPointer(gl_Position, size, gl.FLOAT, false, 0, 0);
+            // 修改 顶点着色器存储空间 变量;
+            gl.vertexAttribPointer(gl_Position, size, gl.FLOAT, false, 0, 0);
 
-        // 赋能-批处理（如果有多个顶点时，需要批处理）
-        gl.enableVertexAttribArray(gl_Position);
+            // 赋能-批处理（如果有多个顶点时，需要批处理）
+            gl.enableVertexAttribArray(gl_Position);
+        }
     };
 
-     /**
-     * 更新顶点数量
-     */
-      updateCount() {
+    /**
+    * 更新顶点数量
+    */
+    updateCount() {
         this.count = this.pointsArr.length / this.size;
     };
 

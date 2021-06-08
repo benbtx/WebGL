@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML5-WebGL-异步绘制</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: purple;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas" width="300" height="150"></canvas>
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        attribute vec4 my_Position;
+        void main(){
+            gl_Position = my_Position;
+            gl_PointSize = 20.0; // 以px像素为单位，表示宽度 和 高度都是20.0
+        }
+    </script>
+
+    <!-- 片元(像素)着色器-内容装饰 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+        // 声明片元变量  uniform是用于在片元着色器中限定片元相关的数据的
+        uniform vec4 my_FragColor;
+        void main() {
+            // 绘制圆：https://www.khronos.org/registry/OpenGL-Refpages/gl4/
+            float dist = distance(gl_PointCoord, vec2(0.5, 0.5));  // distance(p1, p2) 计算两个点位的距离(鼠标到中心点的距离), gl_PointCoord 片元(像素)在一个点中的位置，此位置是被归一化的
+            // 如果 dist 小于 0.5表示该片元是在圆的范围中
+            if(0.5 > dist) {
+                // 显示片元(像素)
+                gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+            } else {
+                discard; // 丢弃，即不在片元进行渲染
+            }
+        } 
+    </script>
+
+    <script type="module">
+        import { initShaders, getMousePosInWebgl } from './js/webgl@init.js';
+        import Sky from './js/Sky.js';
+        import Poly from './js/Poly.js';
+
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+        // 初始化着色器 生成 关联关系 程序对象gl.program
+        initShaders(gl, vsSource, fsSource);
+
+        // 获取片元着色器存储空间;
+        // const my_FragColor = gl.getUniformLocation(gl.program, 'my_FragColor');
+
+        // 设置颜色
+        gl.clearColor(0, 0, 0, 1);
+
+        // 刷底色
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // 多边形容器，用于承载多边形
+        const sky = new Sky(gl);
+
+        // 当前正在绘制的多边形
+        let poly = null;
+
+        // 取消鼠标右击事件
+        canvas.oncontextmenu = function () {
+            return false;
+        };
+
+        // 鼠标点击时事件
+        canvas.addEventListener('mousedown', (event) => {
+            // console.log(event);
+            // 当鼠标右击时
+            if (2 === event.button) {
+                // 删除最后一个顶点
+                poly?.popPointsArr();
+                poly = null;
+                console.log('右击鼠标删除最后一个顶点！！');
+            } else {
+                // 当鼠标左击时
+                const { x, y } = getMousePosInWebgl(event, canvas); // 获取鼠标在webgl 画布中的位置
+                if (poly) {
+                    // 当鼠标左击时 如果poly存在，就添加一个顶点
+                    poly.addPointsArr(x, y);
+                } else {
+                    // 当鼠标左击时 如果poly不存在，就创建一个顶点
+                    createPoly(x, y);
+                }
+            };
+            // 执行绘制
+            render();
+        });
+
+        // 鼠标移动时事件，让最后一个顶点跟着鼠标移动
+        canvas.addEventListener('mousemove', (event) => {
+            // console.log(event);
+            if (poly) {
+                const { x, y } = getMousePosInWebgl(event, canvas);
+                poly.setPointsArr(poly.count - 1, x, y);
+                // 执行绘制
+                render();
+            }
+        });
+
+        // 创建多边形
+        function createPoly(x, y) {
+            poly = new Poly({
+                pointsArr: [x, y, x, y],
+                types: ['POINTS', 'LINE_STRIP']
+            });
+            sky.add(poly);
+        };
+
+        // 渲染方法 执行绘制
+        function render() {
+            // 刷底色
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            sky.draw();
+        };
+
+    </script>
+</body>
+
+</html>

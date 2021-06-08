@@ -3,7 +3,7 @@
 
 
 /**
- * 
+ * 初始化着色器 生成 关联关系 程序对象gl.program
  * @param {*} gl 
  * @param {*} type 
  * @param {*} source 
@@ -59,7 +59,7 @@ function initShaders(gl, vsSource, fsSource) {
 
 
 /**
- * 
+ * webgl坐标系转css坐标系
  * @param {*} param0 
  * @param {*} param1 
  * @returns 

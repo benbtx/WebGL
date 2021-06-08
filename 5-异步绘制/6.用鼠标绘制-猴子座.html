@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML5-WebGL-异步绘制</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background: url('./img/bg.jpg') no-repeat;
+            background-size: cover;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+
+        #audio {
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+            opacity: 10%;
+            transition: opacity 200ms;
+            z-index: 20;
+        }
+
+        #audio:hover {
+            opacity: 90%;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas" width="300" height="150"></canvas>
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        attribute vec4 a_Attrs;
+        varying float v_Alpha;  // 基于顶点着色器的全局变量
+        void main(){
+            gl_Position = vec4(a_Attrs.x, a_Attrs.y, 0.0, 1.0);
+
+            // gl_PointSize = 20.0; // 以px像素为单位，表示宽度 和 高度都是20.0
+            gl_PointSize = a_Attrs.z; // 顶点尺寸大小
+
+            v_Alpha = a_Attrs.w;    // 透明度
+        }
+    </script>
+
+    <!-- 片元(像素)着色器-内容装饰 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+
+        // 声明片元变量  uniform是用于在片元着色器中限定片元相关的数据的
+        // uniform vec4 my_FragColor;
+
+        varying float v_Alpha;   // 收到上面顶点着色器的全局变量：v_Alpha
+        void main() {
+
+            // 绘制圆：https://www.khronos.org/registry/OpenGL-Refpages/gl4/
+            float dist = distance(gl_PointCoord, vec2(0.5, 0.5));  // distance(p1, p2) 计算两个点位的距离(鼠标到中心点的距离), gl_PointCoord 片元(像素)在一个点中的位置，此位置是被归一化的
+            // 如果 dist 小于 0.5表示该片元是在圆的范围中
+            if(0.5 > dist) {
+                // 显示片元(像素)
+                // gl_FragColor = my_FragColor;
+                gl_FragColor = vec4(1.0, 1.0, .3, v_Alpha);
+            } else {
+                discard; // 丢弃，即不在片元进行渲染
+            }
+        } 
+    </script>
+
+    <audio id="audio" controls autoplay loop>
+        <source src="./audio/狮子座.mp3" type="audio/mpeg" />
+    </audio>
+
+    <script type="module">
+        import { initShaders, glToCssPos, getMousePosInWebgl } from './js/webgl@init.js';
+        import { Compose, Track } from './js/Compose-Track.js'
+        import Sky from './js/Sky.js';
+        import Poly from './js/Poly.js';
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        /**
+         * 开启秀明度
+        */
+        // 1、开启片元的颜色合成功能
+        gl.enable(gl.BLEND);
+        // 2、设置片元的合成方式
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+        // 初始化着色器 生成 关联关系 程序对象gl.program
+        initShaders(gl, vsSource, fsSource);
+
+        // 设置颜色
+        gl.clearColor(0, 0, 0, 0);
+
+        // 刷底色
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+
+
+
+        // 多边形容器，用于承载多边形(夜空)
+        const sky = new Sky(gl);
+
+        // 建立合成对象，用于对顶点数据做补间运算
+        const compose = new Compose();
+
+        // 当前正在绘制的多边形
+        let poly = null;
+
+        // 鼠标划上的点（就是鼠点已存在的点上的点）
+        let point = null;
+
+        //  建立时间轨
+        function createTrack(obj) {
+            const { pointSize } = obj;
+            const track = new Track(obj);
+            track.start = new Date(); // 时间轨起始时间
+            track.timeLen = 2000; // 时长(时间轨总时长)
+            track.loop = true;// 是否循环
+            // 关键帧集合( 所有属性的关键帧集合，用于实现闪烁效果的时间轨)
+            track.keyMap = new Map([
+                [
+                    // 对 顶点大小 做补间运算
+                    'pointSize',
+                    [
+                        [500, pointSize],
+                        [1000, 0.0],
+                        [1500, pointSize],
+                    ]
+                ],
+                [
+                    // 对 顶点透明度 做补间运算
+                    'alpha',
+                    [
+                        [500, 1.0],
+                        [1000, 0.0],
+                        [1500, 1]
+                    ]
+                ]
+            ]);
+
+            // 将时间轨关键帧集合 添加到合成对象中
+            compose.add(track);
+        };
+
+        // 随机数
+        function random() {
+            // 顶点尺寸为随机数据：Math.random() * 8.0 + 3.0
+            return Math.random() * 8.0 + 3.0;
+        };
+
+        // 连续添加顶点(固定当前顶点，创建一个跟随鼠标的新顶点)
+        function addPointsArr(x, y) {
+            // 从当前对象解构poly
+            const { geoData } = poly;
+            // 如果 当鼠标正好点在，已存在的点上时，就让多边形的最后一个顶点 = 当前点击的顶点，这样就不会在同一个顶点{x, y} 上重复绘制了；
+            if (point) {
+                geoData[geoData.length - 1] = point;
+            }
+            // 连续添加顶点
+            const obj = { x, y, pointSize: random(), alpha: 1 };
+            geoData.push(obj);
+            // 建立时间轨
+            createTrack(obj);
+        };
+
+        // 创建多边形
+        function createPoly(x, y) {
+            // 第1个顶点对象(上一个被点击的顶点)
+            let o1 = point ? point : { x, y, pointSize: random(), alpha: 1 };
+            // 第2个顶点对象(跟随鼠标移动的顶点)
+            let o2 = { x, y, pointSize: random(), alpha: 1 };
+            // 创建顶点
+            poly = new Poly({
+                size: 4,
+                positionName: 'a_Attrs',
+                geoData: [o1, o2],
+                types: ['POINTS', 'LINE_STRIP']
+            });
+            sky.add(poly);
+            createTrack(o1);
+            createTrack(o2);
+        };
+
+        // 判断鼠标是否移动到顶点上
+        function isHoverPoint(mx, my) {
+            // 遍历sky 中的所有顶点数据
+            for (let { geoData } of sky.children) {
+                for (let obj of geoData) {
+                    // 忽略绘图时随鼠标移动的顶点（也就是判断当前顶点对象，是否等于随鼠标移动的顶点）
+                    if (poly && poly === poly.geoData[poly.geoData.length - 1]) {
+                        continue;  // 忽略本次循环
+                    }
+                    const delData = {
+                        x: mx - obj.x,
+                        y: my - obj.y
+                    };
+                    // 获取鼠标和顶点的像素距离
+                    const { x, y } = glToCssPos(delData, canvas);   // webgl坐标系转css坐标系，返回的是CSS的 x, y
+                    // 计算距离的平方
+                    const dist = x * x + y * y;
+                    // 若此距离小于10（开方后）像素，返回此顶点；否则，返回null。
+                    if (100 > dist) {
+                        return obj;
+                    }
+                }
+            };
+            return null;
+        };
+
+        // 渲染方法 执行绘制
+        function render() {
+            // 刷底色（清理画布）
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            // 执行绘制
+            sky.draw();
+        };
+
+        // 连续渲染方法
+        !(function Animation() {
+            // 更新动画数据
+            compose.update(new Date());
+            // 更新顶点数据
+            sky.updatePointsArr(['x', 'y', 'pointSize', 'alpha']);
+            // 执行渲染
+            render();
+            // 动画帧
+            requestAnimationFrame(Animation);
+        })();
+
+        // 取消鼠标右击事件
+        canvas.oncontextmenu = function () {
+            return false;
+        };
+
+        // 鼠标点击时事件
+        canvas.addEventListener('mousedown', (event) => {
+            // 当鼠标右击时, 右击删除顶点
+            if (2 === event.button) {
+                // 删除最后一个顶点
+                if (poly) {
+                    poly.geoData.pop();
+                    compose.children.pop();
+                    poly = null;
+                }
+            } else {
+                // 当鼠标左击时
+                const { x, y } = getMousePosInWebgl(event, canvas); // 获取鼠标在webgl 画布中的位置
+                if (poly) {
+                    // 当鼠标左击时，连续画顶点
+                    addPointsArr(x, y);
+                } else {
+                    // 当鼠标左击时 如果poly不存在，就创建一个顶点
+                    createPoly(x, y);
+                }
+            };
+            // 执行绘制
+            render();
+        });
+
+        // 鼠标移动时事件，让最后一个顶点跟着鼠标移动
+        canvas.addEventListener('mousemove', (event) => {
+            // 获取鼠标在webgl画布中的位置
+            const { x, y } = getMousePosInWebgl(event, canvas);
+            // 判断鼠标是否移动到顶点上
+            point = isHoverPoint(x, y);
+            // 当鼠标移动到顶点上时，改变鼠标指针样式
+            canvas.style.cursor = point ? 'pointer' : 'default';
+            // 如果多边形对象存在时
+            if (poly) {
+                // 获取该多边形的最后一个顶点，使其最后一个顶点跟随鼠标移动
+                const obj = poly.geoData[poly.geoData.length - 1];
+                obj.x = x;
+                obj.y = y;
+            }
+        });
+    </script>
+</body>
+
+</html>
