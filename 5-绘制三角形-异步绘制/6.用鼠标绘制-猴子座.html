@@ -65,21 +65,26 @@
         // 设置浮点数据的精度 mediump：中等
         precision mediump float;
 
+        uniform bool u_IsPOINTS;    // 用u_IsPOINTS变量来判断，绘制的顶点类型是否是 gl.POINTS: 绘制一系列点。
+
         // 声明片元变量  uniform是用于在片元着色器中限定片元相关的数据的
         // uniform vec4 my_FragColor;
 
         varying float v_Alpha;   // 收到上面顶点着色器的全局变量：v_Alpha
         void main() {
-
-            // 绘制圆：https://www.khronos.org/registry/OpenGL-Refpages/gl4/
-            float dist = distance(gl_PointCoord, vec2(0.5, 0.5));  // distance(p1, p2) 计算两个点位的距离(鼠标到中心点的距离), gl_PointCoord 片元(像素)在一个点中的位置，此位置是被归一化的
-            // 如果 dist 小于 0.5表示该片元是在圆的范围中
-            if(0.5 > dist) {
-                // 显示片元(像素)
-                // gl_FragColor = my_FragColor;
+            if(u_IsPOINTS) {
+                // 绘制圆：https://www.khronos.org/registry/OpenGL-Refpages/gl4/
+                float dist = distance(gl_PointCoord, vec2(0.5, 0.5));  // distance(p1, p2) 计算两个点位的距离(鼠标到中心点的距离), gl_PointCoord 片元(像素)在一个点中的位置，此位置是被归一化的
+                // 如果 dist 小于 0.5表示该片元是在圆的范围中
+                if(0.5 > dist) {
+                    // 显示片元(像素)
+                    // gl_FragColor = my_FragColor;
+                    gl_FragColor = vec4(1.0, 1.0, .3, v_Alpha);
+                } else {
+                    discard; // 丢弃，即不在片元进行渲染
+                }
+            }else {
                 gl_FragColor = vec4(1.0, 1.0, .3, v_Alpha);
-            } else {
-                discard; // 丢弃，即不在片元进行渲染
             }
         } 
     </script>
@@ -203,7 +208,8 @@
                 size: 4,
                 positionName: 'a_Attrs',
                 geoData: [o1, o2],
-                types: ['POINTS', 'LINE_STRIP']
+                types: ['POINTS', 'LINE_STRIP'],
+                circleDot: true
             });
             sky.add(poly);
             createTrack(o1);

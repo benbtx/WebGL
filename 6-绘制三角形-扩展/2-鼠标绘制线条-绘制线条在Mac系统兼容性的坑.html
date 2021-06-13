@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML5-WebGL-鼠标绘制线条-绘制线条在Mac系统兼容性的坑</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: purple;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <img src="./img/绘制线条在Mac系统兼容性的坑.jpg" alt="" />
+    <canvas id="canvas" width="300" height="150"></canvas>
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        attribute vec4 my_Position;
+        attribute float my_PointSize;
+
+        void main(){
+            gl_Position = my_Position;
+            gl_PointSize = my_PointSize; // 以px像素为单位，表示宽度 和 高度都是20.0
+        }
+    </script>
+
+    <!-- 注：上面的判断 在Mac系统中绘制线条时，会有兼容性问题，在Windows系统中则不会有这个问题！！ -->
+    <!-- 片元(像素)着色器-内容装饰 -->
+    <!-- <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        //precision mediump float;
+        //uniform vec4 my_FragColor;
+        //void main() {
+        //    // 绘制圆：https://www.khronos.org/registry/OpenGL-Refpages/gl4/
+        //    float dist = distance(gl_PointCoord, vec2(0.5, 0.5));  // distance(p1, p2) 计算两个点位的距离, gl_PointCoord 片元(像素)在一个点中的位置，此位置是被归一化的
+        //    // 如果 dist 小于 0.5表示该片元是在圆的范围中
+        //    if(0.5 > dist) {
+        //        // gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+        //        gl_FragColor = my_FragColor;
+        //    } else {
+        //        discard; // 丢弃，即不在片元进行渲染
+        //    } 
+        //}
+    </script> -->
+
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+        uniform vec4 my_FragColor;
+
+        uniform bool u_IsPOINTS;    // 用u_IsPOINTS变量来判断，绘制的顶点类型是否是 gl.POINTS: 绘制一系列点。
+
+        void main() {
+
+            if(u_IsPOINTS) {
+                // 绘制圆：https://www.khronos.org/registry/OpenGL-Refpages/gl4/
+                float dist = distance(gl_PointCoord, vec2(0.5, 0.5));  // distance(p1, p2) 计算两个点位的距离, gl_PointCoord 片元(像素)在一个点中的位置，此位置是被归一化的
+                // 如果 dist 小于 0.5表示该片元是在圆的范围中
+                if(0.5 > dist) {
+                    // gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+                    gl_FragColor = my_FragColor;
+                } else {
+                    discard; // 丢弃，即不在片元进行渲染
+                } 
+            } else {
+                gl_FragColor = my_FragColor;
+            }
+        }
+    </script>
+
+    <script type="module">
+        import { initShaders, getMousePosInWebgl } from './js/webgl@init.js';
+        import Poly from './js/Poly.js';
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+        // 初始化着色器 生成 关联关系 程序对象gl.program
+        initShaders(gl, vsSource, fsSource);
+
+        // 设置颜色
+        gl.clearColor(0, 0, 0, 1);
+
+        // 刷底色
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // 获取顶点着色器存储空间;
+        const my_PointSize = gl.getAttribLocation(gl.program, 'my_PointSize');
+
+        // 获取片元着色器存储空间;
+        const my_FragColor = gl.getUniformLocation(gl.program, 'my_FragColor');
+
+        // 设置点的大小
+        gl.vertexAttrib1f(my_PointSize, 10);
+
+        // 修改片元颜色
+        gl.uniform4f(my_FragColor, 0.0, 0.0, 1.0, 1.0);  // r, g, b, a  蓝色，不透明
+
+        // 实例化封装好的Poly类
+        const poly = new Poly({
+            gl,
+            circleDot: true,
+            types: ['POINTS', 'LINE_STRIP']
+        });
+
+        // canvas.addEventListener('click', (event) => {
+        canvas.addEventListener('mousedown', (event) => {
+            const { x, y } = getMousePosInWebgl(event, canvas);
+            console.log(x, y);
+            poly.addPointsArr(x, y);
+
+            // 刷底色
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            // 绘制顶点
+            poly.draw();
+        });
+
+
+
+        /**
+         * 绘制顶点
+         *  gl.drawArrays(mode, first, count); 方法用于从向量数组中绘制图元。
+         *
+         *  // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/drawArrays
+         *
+         *  参数说明：
+         *      mode 指定绘制图元的方式，可能值如下：
+         *      点：
+         *          gl.POINTS: 绘制一系列点。
+         *      线：
+                    gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
+                    gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
+                    gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
+                面：
+                    gl.TRIANGLE_STRIP：绘制一个三角带。
+                    gl.TRIANGLE_FAN：绘制一个三角扇。
+                    gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
+                
+                first 指定从哪个点开始绘制。
+                count 指定绘制需要使用到多少个点。
+        */
+
+    </script>
+</body>
+
+</html>
