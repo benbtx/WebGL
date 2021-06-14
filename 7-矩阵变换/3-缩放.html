@@ -25,7 +25,7 @@
 </head>
 
 <body>
-    <img src="./img/位移.jpg" alt="" />
+    <img src="./img/缩放.jpg" alt="" />
     <canvas id="canvas" width="300" height="150"></canvas>
 
     <!-- 
@@ -41,12 +41,48 @@
         attribute float a_PointSize;
         // 声明、暴露-顶点位移变量
         uniform vec4 u_Translation;
+        // 声明、私有-顶点位移变量
+        // vec4 v_translation = vec4(0.0, -0.5, 0.0, 0.0); // 参数说明：x, y, z, w;
 
-        // 声明、私有-顶点位移变量, 向y(上)移动顶点
-        vec4 v_translation = vec4(0.0, 0.6, 0.0, 0.0); // 参数说明：x, y, z, w;
+        //  声明、私有-角度变量
+        // float angle = radians(26.55); // radians() 方法，用于角度转弧度
+        // 声明、私有-正玄
+        // float sinB = sin(angle);
+        // 声明、私有-余玄
+        // float cosB = cos(angle);
+
+        // 声明、暴露-正玄
+        //uniform float u_SinB;
+        // 声明、暴露-余玄
+        //uniform float u_CosB;
+
+        // 声明、私有-缩放变量 
+        // float scale = 0.5;  // 0.5 缩小一半
 
         void main(){
-            gl_Position = a_Position + v_translation;  // 私有向量加法
+            // gl_Position = a_Position + v_translation;  // 私有向量加法
+
+            // 位移
+            // gl_Position = a_Position + u_Translation;  // 向量加法
+
+            // 旋转
+            // gl_Position.x = a_Position.x * cosB - a_Position.y * sinB;
+            // gl_Position.y = a_Position.y * cosB + a_Position.x * sinB;
+            // gl_Position.z = a_Position.z;
+            // gl_Position.w = 1.0;
+
+            // 缩放
+            // gl_Position.x = a_Position.x * scale;
+            // gl_Position.y = a_Position.y * scale;
+            // gl_Position.z = a_Position.z* scale;
+            // gl_Position.w = 1.0;
+
+            // 缩放 简写, 用vec3(a_Position)来解构：x, y, z
+            gl_Position = vec4(vec3(a_Position)* scale, 1.0);
+            
+
+            
+
            
             gl_PointSize = a_PointSize; // 以px像素为单位，表示宽度 和 高度都是20.0
         }
@@ -79,7 +115,7 @@
     </script>
 
     <script type="module">
-        import { initShaders } from './js/webgl@utils.js';
+        import { initShaders, getMousePosInWebgl } from './js/webgl@utils.js';
 
         // 获取画布DOM
         const canvas = document.querySelector('#canvas');
@@ -131,6 +167,9 @@
         const a_PointSize = gl.getAttribLocation(gl.program, 'a_PointSize');
         // 获取顶点位移变量
         const u_Translation = gl.getUniformLocation(gl.program, 'u_Translation');
+        // 获取顶点旋转变量
+        const u_SinB = gl.getUniformLocation(gl.program, 'u_SinB');
+        const u_CosB = gl.getUniformLocation(gl.program, 'u_CosB');
         // 获取片元着色器存储空间;
         const u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
 
@@ -138,7 +177,7 @@
         // gl.vertexAttrib1f(a_PointSize, 50);
 
         // 修改顶点位置（位移）
-        gl.uniform4f(u_Translation, 0.0, 0.5, 0.0, 1.0); // x, y, z, w
+        // gl.uniform4f(u_Translation, 0.0, 0.5, 0.0, 1.0); // x, y, z, w
 
         // 修改片元颜色
         gl.uniform4f(u_FragColor, 0.0, 0.0, 1.0, 1.0);  // r, g, b, a  蓝色，不透明
@@ -152,6 +191,7 @@
         // 执行绘制
         // gl. TRIANGLES 绘制一系列三角形。每三个点作为顶点
         gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
+
 
 
         /**
