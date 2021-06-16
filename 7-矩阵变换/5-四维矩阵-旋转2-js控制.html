@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML5-WebGL-矩阵变换</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: purple;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <img src="./img/矩阵.jpg" alt="" />
+    <canvas id="canvas" width="300" height="150"></canvas>
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        // 声明、暴露-顶点位置变量
+        attribute vec4 a_Position;
+        // 声明、暴露-顶点大小变量
+        attribute float a_PointSize;
+        
+        // 声明、私有-角度变量 angle
+        float angle = radians(26.55); // radians() 方法，用于角度转弧度
+        // 声明、私有-正玄
+        float sinB = sin(angle);
+        // 声明、私有-余玄
+        float cosB = cos(angle);
+
+        // 声明、私有 四维矩阵（这是一个列主序）
+        // mat2 m2 = mat2(
+        //     cosB, sinB,
+        //     -sinB, cosB
+        // );
+
+        // 声明、私有 四维矩阵（这是一个列主序）
+        // mat4 m4 = mat4(
+        //     //x     y     z    w
+        //     cosB,  sinB, 0.0, 0.0, // x
+        //     -sinB, cosB, 0.0, 0.0, // y
+        //     0.0,   0.0,  1.0, 0.0, // z
+        //     0.0,   0.0,  0.0, 1.0  // w
+        // );
+
+        //声明、暴露-四维矩阵变量
+        uniform mat4 u_Matrix;
+
+        void main(){
+            // gl_Position = vec4(
+            //     m2 * vec2(a_Position),
+            //     a_Position.z,
+            //     a_Position.w
+            // );
+
+            // gl_Position = m4 * a_Position;
+            
+            gl_Position = u_Matrix * a_Position;
+
+            // gl_PointSize = a_PointSize; // 以px像素为单位，表示宽度 和 高度都是20.0
+        }
+    </script>
+
+    <!-- 片元(像素)着色器-内容装饰 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+        uniform vec4 u_FragColor;
+
+        uniform bool u_IsPOINTS;    // 用u_IsPOINTS变量来判断，绘制的顶点类型是否是 gl.POINTS: 绘制一系列点。
+
+        void main() {
+
+            if(u_IsPOINTS) {
+                // 绘制圆：https://www.khronos.org/registry/OpenGL-Refpages/gl4/
+                float dist = distance(gl_PointCoord, vec2(0.5, 0.5));  // distance(p1, p2) 计算两个点位的距离, gl_PointCoord 片元(像素)在一个点中的位置，此位置是被归一化的
+                // 如果 dist 小于 0.5表示该片元是在圆的范围中
+                if(0.5 > dist) {
+                    // gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+                    gl_FragColor = u_FragColor;
+                } else {
+                    discard; // 丢弃，即不在片元进行渲染
+                } 
+            } else {
+                gl_FragColor = u_FragColor;
+            }
+        }
+    </script>
+
+    <script type="module">
+        import { initShaders } from './js/webgl@utils.js';
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+        // 初始化着色器 生成 关联关系 程序对象gl.program
+        initShaders(gl, vsSource, fsSource);
+
+        /**
+         * 如何向点着色器 attribute 变量中写入、绘制多个点
+        */
+
+        // 1、建立 三角形顶点数据
+        const vertices = new Float32Array([
+            0.0, 0.3,
+            -0.2, -0.1,
+            0.2, -0.1,
+        ]);
+
+        // 2、建立顶点缓冲区对象
+        const vertexBuffer = gl.createBuffer();
+
+        // 3、绑定缓冲对象  // https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/bindBuffer
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer); // gl.ARRAY_BUFFER 包含顶点属性的Buffer，如顶点坐标，纹理坐标数据或顶点颜色数据。
+
+        // 4、写入数据
+        // gl.bufferData(target, size, srcData Optional, usage, srcOffset, length Optional)
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+        // 5、获取顶点着色器存储空间 attribute 中的a_Position变量;
+        const a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+
+        // 6、修改attribute 变量
+        // gl.vertexAttribPointer(index, size, type, normalized, stride, offset);
+        gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 0, 0);
+
+        // 7、赋能 批处理
+        gl.enableVertexAttribArray(a_Position);
+
+        // 获取顶点着色器存储空间;
+        const a_PointSize = gl.getAttribLocation(gl.program, 'a_PointSize');
+
+        // 获取顶点着色器存储空间 - 四维矩阵变量;
+        const u_Matrix = gl.getUniformLocation(gl.program, 'u_Matrix');
+
+        // 获取片元着色器存储空间;
+        const u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
+
+        // 修改顶点大小（注：面 不用设置大小）
+        // gl.vertexAttrib1f(a_PointSize, 50);
+
+        // 建立四维矩阵旋转初始数据
+        let angle = 30.0;
+        const sinB = Math.sin(angle);
+        const cosB = Math.cos(angle);
+        const matrix = [
+            cosB, sinB, 0.0, 0.0,
+            -sinB, cosB, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0
+        ];
+        // 修改四维矩阵
+        // gl.uniformMatrix4fv(location, transpose, value);
+        gl.uniformMatrix4fv(u_Matrix, false, matrix);
+
+        // 修改片元颜色
+        gl.uniform4f(u_FragColor, 0.0, 1.0, 1.0, 1.0);  // r, g, b, a  蓝色，不透明
+
+        // 设置颜色
+        gl.clearColor(0, 0, 0, 1);
+
+        // 刷底色 使用上面设置的颜色，清空绘图区
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // 执行绘制
+        // gl. TRIANGLES 绘制一系列三角形。每三个点作为顶点
+        gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
+
+        // JS 控制四维矩阵 旋转
+        !(function render() {
+            angle += 0.02;
+            const sinB = Math.sin(angle);
+            const cosB = Math.cos(angle);
+            const matrix = [
+                cosB, sinB, 0.0, 0.0,
+                -sinB, cosB, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0
+            ];
+            // 修改四维矩阵
+            gl.uniformMatrix4fv(u_Matrix, false, matrix);
+
+            // 刷底色 使用上面设置的颜色，清空绘图区
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            // 执行绘制
+            // gl. TRIANGLES 绘制一系列三角形。每三个点作为顶点
+            gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
+
+            requestAnimationFrame(render);
+        })();
+
+
+        /**
+         * 【绘制顶点 drawArrays】
+         *  gl.drawArrays(mode, first, count); 方法用于从向量数组中绘制图元。
+         *
+         *  // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/drawArrays
+         *
+         *  参数说明：
+         *      mode 指定绘制图元的方式，可能值如下：
+         *      点：
+         *          gl.POINTS: 绘制一系列点。
+         *      线：
+         *           gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
+         *           gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
+         *           gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
+         *       面：
+         *           gl.TRIANGLE_STRIP：绘制一个三角带。
+         *           gl.TRIANGLE_FAN：绘制一个三角扇。
+         *           gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
+         *
+         *       first 指定从哪个点开始绘制。
+         *       count 指定绘制需要使用到多少个点。
+         *
+         *
+         *
+         * 【WebGl 同步绘图原理总结】：
+         *
+         *   webgl 的同步绘图的现象，其实是由webgl 底层内置的颜色缓冲区导致的。
+         *
+         *   “胸有成竹”大家知道吧？这个颜色缓冲区就是“胸有成竹”的胸，它在电脑里会占用一块内存。
+         *
+         *   在我们使用webgl 绘图的时候，是先在颜色缓冲区中画出来，这样的图像还在胸中，所以外人看不见，只有webgl系统自己知道。
+         *
+         *   在我们想要将图像显示出来的时候，那就照着颜色缓冲区中的图像去画，这个步骤是webgl 内部自动完成的，我们只要执行绘图命令即可。
+         *
+         *   颜色缓冲区中存储的图像，只在当前线程有效。比如我们先在js 主线程中绘图，主线程结束后，会再去执行信息队列里的异步线程。
+         *
+         *   在执行异步线程时，颜色缓冲区就会被webgl 系统重置，我们曾经在主线程里的“胸有成竹”也就没了，既然没了，也就画不出那时的图像了。
+         *
+         *   webgl 绘图原理我就说到这。接下来咱们用js控制顶点尺寸。
+         */
+
+    </script>
+</body>
+
+</html>
