@@ -61,12 +61,19 @@
         console.dir(gl);
 
         // 设置清空绘图区的颜色
-        // gl.clearColor(red, green, blue, alpha);
+        // gl.clearColor(red, green, blue, alpha); 注：值为：0-1
         gl.clearColor(0, 1, 0, 1);
         console.log(gl.clear);
 
+        // gl.COLOR_BUFFER_BIT 颜色缓冲区
+        console.log(gl.COLOR_BUFFER_BIT);
         // 使用上面设置的颜色，清空绘图区
         gl.clear(gl.COLOR_BUFFER_BIT);
+
+        setInterval(() => {
+            gl.clearColor(Math.random(), Math.random(), Math.random(), 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+        }, 1000);
 
     </script>
 </body>

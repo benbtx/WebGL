@@ -51,7 +51,7 @@ function initShaders(gl, vsSource, fsSource) {
     //启动 程序对象
     gl.useProgram(program);
 
-    //将程序对象挂到上下文对象上
+    // 将程序对象挂载到上下文对象上（这是自定义的，主要是为了方便后面在用到程序对象时，好直接在gl对象中获取！！）
     gl.program = program;
 
     return true;

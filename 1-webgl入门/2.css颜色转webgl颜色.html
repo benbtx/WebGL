@@ -63,6 +63,8 @@
 
         /**
          * css颜色转webgl颜色
+         * 注：由于大部web开发的css中的颜色值是在0-255之前，而WebGL的颜色值是在0-1之间。
+         *     所以为了方便，定义了一个叫CssToWebGlColor()的方法，来对css中的颜色值转换为WebGL可用的颜色值！！！
         */
 
         // css颜色 红色
@@ -97,8 +99,8 @@
         */
         // 转换函数封装， 在Three.js库中的color对象 
         function CssToWebGlColor(rgba) {
-            const rgbaStr = /\((.*)\)/.exec(rgba);
-            const rgbaArr = rgbaStr[1].split(',').map(str => parseFloat(str));
+            const rgbaStr = /\((.*)\)/.exec(rgba); // 通过正则获取到()中的0, 0, 255 0.8的值
+            const rgbaArr = rgbaStr[1].split(',').map(str => parseFloat(str)); // 将获取到的值数字数组
             return [rgbaArr[0] / 255, rgbaArr[1] / 255, rgbaArr[2] / 255, rgbaArr[3]];
         };
 

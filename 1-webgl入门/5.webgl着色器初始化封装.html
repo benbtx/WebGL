@@ -75,8 +75,10 @@
         // 获取webgl 三维绘图上下文对象
         const gl = canvas.getContext('webgl');
 
-        // 获取着色器文本
+        // 获取顶点着色器文本
         const vsSource = document.querySelector('#vertexShader').innerText;
+        
+        // 获取片元着色器文本
         const fsSource = document.querySelector('#fragmentShader').innerText;
 
         // 初始化着色器 生成 关联关系 程序对象
