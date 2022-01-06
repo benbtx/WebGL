@@ -104,7 +104,7 @@ export class Track {
             } else if (time > fms[last][0]) {
                 target[key] = fms[last][1];
 
-                //否则，计算本地时间在左右两个关键帧之间对应的补间状态
+                //否则，计算本地时间在左右两个关键帧之间对应的补间状态（就是从透明到不透明之前的补间状态）
             } else {
                 target[key] = this.getValBetweenFms(time, fms, last);
             }

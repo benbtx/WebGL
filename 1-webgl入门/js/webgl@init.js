@@ -54,6 +54,7 @@ function initShaders(gl, vsSource, fsSource) {
     // 将程序对象挂载到上下文对象上（这是自定义的，主要是为了方便后面在用到程序对象时，好直接在gl对象中获取！！）
     gl.program = program;
 
+    // 这里返回true，是当以上都正常运行后，便于继续向下运行程序。
     return true;
 };
 

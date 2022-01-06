@@ -77,7 +77,7 @@
             // gl_FragColor = my_FragColor; // 紫色 四维向量 r, b, b, a  
 
             // 绘制圆：https://www.khronos.org/registry/OpenGL-Refpages/gl4/
-            float dist = distance(gl_PointCoord, vec2(0.5, 0.5));  // distance(p1, p2) 计算两个点位的距离, gl_PointCoord 片元(像素)在一个点中的位置，此位置是被归一化的
+            float dist = distance(gl_PointCoord, vec2(0.5, 0.5));  // distance(p1, p2) 计算两个点位的距离, gl_PointCoord 片元(像素)在一个点中心的位置，此位置是被归一化的
             // 如果 dist 小于 0.5表示该片元是在圆的范围中
             if(0.5 > dist) {
                 gl_FragColor = my_FragColor;
