@@ -28,7 +28,7 @@ export default class Sky {
     };
 
     /**
-     * 遍历子对象绘图
+     * 遍历子对象并绘图
      */
     draw() {
         this.children.forEach(item => {

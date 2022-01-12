@@ -132,7 +132,9 @@
         /**
           * 如何向点着色器 attribute 变量中写入、绘制多个点
           * 
-          *  顶点-路径 G 的数据-逆时针绘制
+          *  顶点-路径 G 的数据-(注：这里是CSS[就是从屏幕的左上角为起点 x:0.0 向右→, y:0.0 向下↓ ]逆时针的绘制方式
+          * 
+          *  注：canvas坐标系的单位(1单位=1px)和webgl坐标系的单位(1单位=canvas宽或高的一半)是不一样的！！
          */
         const pathData = [
             0, 0,
@@ -156,7 +158,7 @@
         //正方形高度
         const rectH = 1.0;
         //正方形宽度
-        const rectW = rectH / ratio;
+        const rectW = rectH / ratio; // 注：canvas坐标系的单位(1单位=1px)和webgl坐标系的单位(1单位=canvas宽或高的一半)是不一样的！
         //正方形宽高的一半
         const [halfRectW, halfRectH] = [rectW / 2, rectH / 2];
         //两个极点
@@ -176,9 +178,13 @@
             ],
         });
 
-        //绘制 正方形4个角 的顶点
+        //绘制 正方形的4个角顶点
         rect.draw();
         
+
+
+
+
 
         //建立X比例尺
         const scaleX = ScaleLinear(
@@ -193,55 +199,62 @@
             600, minY
         );
 
-        //将路径G中的像素数据解析为webgl数据
+        //根据scaleX 和 scaleY比例尺将CSS坐标系的像素数据解析为webgl坐标系顶点数据
         const glData = [];
         for (let i = 0; i < pathData.length; i += 2) {
+            // i += 2 每隔两个数据循环一次
             glData.push(scaleX(pathData[i]), scaleY(pathData[i + 1]));
         }
+        
+        // 实例化Poly绘图类，将解析好的webgl坐标系顶点数据传过去
         const path = new Poly({
             gl,
             pointsArr: glData,
-            types: ["POINTS", "LINE_LOOP"],
+            types: ["POINTS", "LINE_LOOP"],  // POINTS 点， LINE_LOOP 线
         });
-        //绘制 G 字形的每个角的顶点
+
+        //绘制 G 字形的每个角的顶点和线条
         path.draw();
 
+        // 实例化ShapeGeo类，将解析好的webgl坐标系顶点数据传过去，把图形转为面
         const shapeGeo = new ShapeGeo(glData)
         const face = new Poly({
             gl,
             pointsArr: shapeGeo.vertices,
-            types: ["TRIANGLES"],
+            types: ["TRIANGLES"], // TRIANGLES 面
         });
 
         // 修改片元颜色
         gl.uniform4f(my_FragColor, 1.0, 1.0, 0.0, 1.0);  // r, g, b, a  蓝色，不透明
 
-        //绘制 G 字形的片元颜色
+        //绘制 G 字形的片元颜色(面)
         face.draw();
        
 
         /**
-         * 绘制顶点类型方式
+         * 绘制顶点方法 drawArrays()
          *  gl.drawArrays(mode, first, count); 方法用于从向量数组中绘制图元。
          *
          *  // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/drawArrays
          *
          *  参数说明：
-         *      mode 指定绘制图元的方式，可能值如下：
-         *      点：
-         *          gl.POINTS: 绘制一系列点。
-         *      线：
-                    gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
-                    gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
-                    gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
-                面：
-                    gl.TRIANGLE_STRIP：绘制一个三角带。
-                    gl.TRIANGLE_FAN：绘制一个三角扇。
-                    gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
-                
-                first 指定从哪个点开始绘制。
-                count 指定绘制需要使用到多少个点。
-        */
+         *      mode 【绘图模式】指定绘制图元的方式，可能值如下：
+         *          点：
+         *              gl.POINTS: 绘制一系列点。
+         * 
+         *          线：
+         *              gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
+         *              gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
+         *              gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
+         *              
+         *          面：
+         *              gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
+         *              gl.TRIANGLE_STRIP：绘制一个三角带。
+         *              gl.TRIANGLE_FAN：绘制一个三角扇。
+         *      
+         *      first【绘图起点】 指定从哪个点开始绘制。
+         *      count 【绘制数量】指定绘制需要使用到多少个点。
+        **/
 
         /*
         * WebGl 同步绘图原理总结!!!

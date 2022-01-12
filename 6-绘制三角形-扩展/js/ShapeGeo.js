@@ -114,7 +114,7 @@ export default class ShapeGeo {
   };
 
   /**
-   * - 基于对象数组geoData 生成平展开的vertices 数据
+   * - 基于对象数组geoData 生成扁平(展开的vertices)数据
    */
   upadateVertices() {
     const arr = []

@@ -98,7 +98,7 @@ function getMousePosInWebgl({ clientX, clientY }, canvas) {
 };
 
 /**
- * 线性比例尺
+ * 线性比例尺 二维项点映射
  * @param {*} ax 
  * @param {*} ay 
  * @param {*} bx 
