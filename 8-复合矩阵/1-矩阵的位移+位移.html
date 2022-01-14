@@ -25,7 +25,7 @@
 </head>
 
 <body>
-    <img src="./img/矩阵库.jpg" alt="" />
+    <img src="./img/矩阵综合变换.jpg" alt="" />
     <canvas id="canvas" width="300" height="150"></canvas>
 
     <!-- 
@@ -111,7 +111,6 @@
          *      three.js 中的 matrix3对象 和 matrix4对象
         */
 
-
         // 获取画布DOM
         const canvas = document.querySelector('#canvas');
         canvas.width = window.innerWidth;
@@ -171,11 +170,11 @@
         // gl.vertexAttrib1f(a_PointSize, 50);
 
         // 矩阵的位移+位移
-        const [bx, by] = [0.1, 0.2];    // 第1次位移的初始值
+        const [bx, by] = [0.1, 0.2];    // 第1次位移的初始值 试试看修改这里的初始值
         const [cx, cy] = [0.3, 0.4];    // 第2次位移的初始值
 
         // 这里使用 three.js 库中的Matrix4类  // https://threejs.org/docs/index.html?q=Matrix#api/zh/math/Matrix4
-        // 第1次位移的矩形
+        // 第1次位移的矩阵
         const bm = new Matrix4().set(
             // 行主序(水平)
             1, 0, 0, bx,
@@ -183,7 +182,7 @@
             0, 0, 1, 0,
             0, 0, 0, 1
         );
-        // 第2次位移的矩形
+        // 第2次位移的矩阵
         const cm = new Matrix4().set(
             // 行主序(水平)
             1, 0, 0, cx,
@@ -192,16 +191,15 @@
             0, 0, 0, 1
         );
 
+        //multiply()是three.js中的矩阵相乘方法，cm矩阵 乘以 bm矩阵
         const dm = cm.multiply(bm);
 
         // 把矩阵设置为绕z轴旋转弧度theta (θ)大小的矩阵
         // https://threejs.org/docs/index.html?q=Matrix#api/zh/math/Matrix4.makeRotationZ
-        m4.makeRotationZ(angle);
+        // m4.makeRotationZ(angle);
 
         // 修改四维矩阵
-        // gl.uniformMatrix4fv(location, transpose, value);
-        // gl.uniformMatrix4fv(u_Matrix, false, matrix);
-        gl.uniformMatrix4fv(u_Matrix, false, m4.elements);
+        gl.uniformMatrix4fv(u_Matrix, false, dm.elements);
 
         // 修改片元颜色
         gl.uniform4f(u_FragColor, 0.0, 0.0, 1.0, 1.0);  // r, g, b, a  蓝色，不透明
@@ -216,55 +214,31 @@
         // gl. TRIANGLES 绘制一系列三角形。每三个点作为顶点
         gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
 
-        // JS 控制四维矩阵 旋转
-        !(function render() {
-            angle += 0.02;
-            // const sinB = Math.sin(angle);
-            // const cosB = Math.cos(angle);
-            // const matrix = [
-            //     cosB, sinB, 0.0, 0.0,
-            //     -sinB, cosB, 0.0, 0.0,
-            //     0.0, 0.0, 1.0, 0.0,
-            //     0.0, 0.0, 0.0, 1.0
-            // ];
-
-            m4.makeRotationZ(angle);
-
-            // 修改四维矩阵
-            // gl.uniformMatrix4fv(u_Matrix, false, matrix);
-            gl.uniformMatrix4fv(u_Matrix, false, m4.elements);
-
-            // 刷底色 使用上面设置的颜色，清空绘图区
-            gl.clear(gl.COLOR_BUFFER_BIT);
-
-            // 执行绘制
-            // gl. TRIANGLES 绘制一系列三角形。每三个点作为顶点
-            gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
-
-            requestAnimationFrame(render);
-        })();
+        
 
         /**
-         * 【绘制顶点 drawArrays】
+         * 绘制顶点方法 drawArrays()
          *  gl.drawArrays(mode, first, count); 方法用于从向量数组中绘制图元。
          *
          *  // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/drawArrays
          *
          *  参数说明：
-         *      mode 指定绘制图元的方式，可能值如下：
-         *      点：
-         *          gl.POINTS: 绘制一系列点。
-         *      线：
-         *           gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
-         *           gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
-         *           gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
-         *       面：
-         *           gl.TRIANGLE_STRIP：绘制一个三角带。
-         *           gl.TRIANGLE_FAN：绘制一个三角扇。
-         *           gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
-         *
-         *       first 指定从哪个点开始绘制。
-         *       count 指定绘制需要使用到多少个点。
+         *      mode 【绘图模式】指定绘制图元的方式，可能值如下：
+         *          点：
+         *              gl.POINTS: 绘制一系列点。
+         * 
+         *          线：
+         *              gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
+         *              gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
+         *              gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
+         *              
+         *          面：
+         *              gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
+         *              gl.TRIANGLE_STRIP：绘制一个三角带。
+         *              gl.TRIANGLE_FAN：绘制一个三角扇。
+         *      
+         *      first【绘图起点】 指定从哪个点开始绘制。
+         *      count 【绘制数量】指定绘制需要使用到多少个点。
          *
          *
          *
@@ -281,8 +255,7 @@
          *   颜色缓冲区中存储的图像，只在当前线程有效。比如我们先在js 主线程中绘图，主线程结束后，会再去执行信息队列里的异步线程。
          *
          *   在执行异步线程时，颜色缓冲区就会被webgl 系统重置，我们曾经在主线程里的“胸有成竹”也就没了，既然没了，也就画不出那时的图像了。
-         *
-         *   webgl 绘图原理我就说到这。接下来咱们用js控制顶点尺寸。
+        
          */
 
     </script>
