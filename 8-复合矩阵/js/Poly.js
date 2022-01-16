@@ -7,12 +7,14 @@ const defAttr = () => ({
     gl: null,   // webgl上下文对象
     pointsArr: [],   // 顶点数据集合，在被赋值的时候会做两件事, 1、更新count 顶点数量，数据运算尽量不放渲染方法里。2、向缓冲区内写入顶点数据
     geoData: [], // 模型数据，对象数组，可解析出pointsArr 顶点数据
-    size: 2,    // 顶点分量的数目
-    positionName: 'my_Position',    // 代表顶点位置的attribute 变量名
+    size: 3,    // 顶点分量的数目
+    positionName: 'a_Position',    // 代表顶点位置的attribute 变量名
     count: 0,   // 顶点数量
     types: ['POINTS'],  // 绘图方式，可以用多种方式绘图
     circleDot: false,   // 绘制的是否是圆点
     u_IsPOINTS: null,  // 绘制的顶点类型是否是gl.POINTS类型
+
+    uniforms: {}
 });
 
 export default class Poly {
@@ -50,6 +52,8 @@ export default class Poly {
             if (circleDot) {
                 this.u_IsPOINTS = gl.getUniformLocation(gl.program, 'u_IsPOINTS');
             }
+
+            this.updateUniform();
         }
     };
 
@@ -88,6 +92,22 @@ export default class Poly {
         });
         this.pointsArr = pointsArr;
     };
+
+    /**
+    * 更新，修改Uniform变量
+    */
+    updateUniform() {
+        const { gl, uniforms } = this;
+        for (const [key, val] of Object.entries(uniforms)) {
+            const { type, value } = val;
+            const u = gl.getUniformLocation(gl.program, key);
+            if (type.includes('Matrix')) {
+                gl[type](u, false, value);
+            } else {
+                gl[type](u, value);
+            }
+        }
+    }
 
     /**
      * 添加顶点

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML5-WebGL-矩阵复合-视图矩阵-生成视图矩阵方法自实现</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: purple;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <img src="./img/矩阵综合变换.jpg" alt="" />
+    <canvas id="canvas" width="300" height="150"></canvas>
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        // 声明、暴露-顶点位置变量
+        attribute vec4 a_Position;
+        // 声明、暴露-顶点大小变量
+        attribute float a_PointSize;
+        //声明、暴露-四维视图矩阵变量
+        uniform mat4 u_ViewMatrix;
+        
+        void main(){
+
+            gl_Position = u_ViewMatrix * a_Position;
+           
+            // gl_PointSize = a_PointSize; // 以px像素为单位，表示宽度 和 高度都是20.0
+        }
+    </script>
+
+    <!-- 片元(像素)着色器-内容装饰 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+        uniform vec4 u_FragColor;
+
+        void main() {
+
+            gl_FragColor = u_FragColor;
+        }
+    </script>
+
+    <script type="module">
+        import { Matrix4, Vector3, Quaternion } from './js/three@0.129.0.module.js'
+        import { initShaders } from './js/webgl@utils.js';
+
+        /**
+         * 第三方 WebGL 矩阵库：
+         *      cuon-matrix.js
+         *      three.js 中的 matrix3对象 和 matrix4对象
+        */
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+        // 初始化着色器 生成 关联关系 程序对象gl.program
+        initShaders(gl, vsSource, fsSource);
+
+        /**
+         * 如何向点着色器 attribute 变量中写入、绘制多个点
+        */
+
+
+        // 1、建立 正方体的顶点数据
+        const verticeLib = [
+            1.0, 1.0, 1.0,
+            -1.0, 1.0, 1.0,
+            -1.0, -1.0, 1.0,
+            1.0, -1.0, 1.0,
+            1.0, -1.0, -1.0,
+            1.0, 1.0, -1.0,
+            -1.0, 1.0, -1.0,
+            -1.0, -1.0, -1.0,
+        ];
+
+        // 正方体的12线
+        const indices = [
+            0, 1,
+            1, 2,
+            2, 3,
+            3, 0,
+
+            0, 5,
+            1, 6,
+            2, 7,
+            3, 4,
+
+            4, 5,
+            5, 6,
+            6, 7,
+            7, 4,
+        ];
+
+        const arr = [];
+        indices.forEach(n => {
+            const i = n * 3;
+            arr.push(
+                verticeLib[i] / 5,
+                verticeLib[i + 1] / 5,
+                verticeLib[i + 2] / 5,
+            )
+        });
+
+        const vertices = new Float32Array(arr);
+
+        // 2、建立顶点缓冲区对象
+        const vertexBuffer = gl.createBuffer();
+
+        // 3、绑定缓冲对象  // https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/bindBuffer
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer); // gl.ARRAY_BUFFER 包含顶点属性的Buffer，如顶点坐标，纹理坐标数据或顶点颜色数据。
+
+        // 4、写入数据
+        // gl.bufferData(target, size, srcData Optional, usage, srcOffset, length Optional)
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+        // 5、获取顶点着色器存储空间 attribute 中的a_Position变量;
+        const a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+
+        // 6、修改attribute 变量
+        // gl.vertexAttribPointer(index, size, type, normalized, stride, offset);
+        gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0);
+
+        // 7、赋能 批处理
+        gl.enableVertexAttribArray(a_Position);
+
+        // 获取顶点着色器存储空间;
+        const a_PointSize = gl.getAttribLocation(gl.program, 'a_PointSize');
+
+        // 获取顶点着色器存储空间 - 四维视图矩阵变量;
+        const u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
+
+        // 获取片元着色器存储空间;
+        const u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
+
+        // 修改顶点大小（注：面 不用设置大小）
+        // gl.vertexAttrib1f(a_PointSize, 50);
+
+
+
+        // 这里使用 three.js 库中的Matrix4类  // https://threejs.org/docs/index.html?q=Matrix#api/zh/math/Matrix4
+        /**
+         * 综合变换(缩放/旋转/位移)
+         *      three.js 库的Matrix4类中的compose()综合变换方法
+         *      变换顺序：
+         *          先缩放，再旋转，最后位移
+        */
+
+
+        /**
+         * 三维向量 Vector3() 数学库
+         * https://threejs.org/docs/index.html?q=Vector3#api/zh/math/Vector3
+         * Vector3( x : Float, y : Float, z : Float )
+         *  x - 向量的x值，默认为0。
+         *  y - 向量的y值，默认为0。
+         *  z - 向量的z值，默认为0。
+        */
+
+
+
+        /**
+         * 自定义实现new Matrix4().lookAt()方法
+         *      基于视点、目标点、上方向 生成视图矩阵
+         * 
+         * 参数说明：
+         *      e：视点
+         *      t：目标点
+         *      u：上方向
+         * 
+         * 方法说明：
+         *      subVectors(e, t)：向量e 减 向量t
+         *      crossVectors(u, e)向量u 叉乘 向量e
+         *      normalize()向量的归一化
+        */
+
+        function Matrix4LookAt(e, t, u) {
+
+            // 基向量c 视线
+            const c = new Vector3().subVectors(e, t).normalize();
+            // 基向量a 视线和上方向的垂线
+            const a = new Vector3().crossVectors(u, e).normalize();
+            // 基向量b 修正上方向
+            const b = new Vector3().crossVectors(c, a).normalize();
+
+            // 正交旋转矩阵
+            const mr = new Matrix4().set(
+                a.x, a.y, a.z, 0,
+                b.x, b.y, b.z, 0,
+                -c.x, -c.y, -c.z, 0,
+                0, 0, 0, 1,
+            );
+            // 位移矩阵
+            const mt = new Matrix4().set(
+                1, 0, 0, -e.x,
+                0, 1, 0, -e.y,
+                0, 0, 1, -e.z,
+                0, 0, 0, 1,
+            );
+            return mr.multiply(mt);
+        };
+        
+        const viewMatrix = Matrix4LookAt(
+            new Vector3(0.2, 0.2, 0.5),
+            new Vector3(0.0, 0.0, 0.0), // 相反，向左
+            new Vector3(0.0, 1.0, 0.0),
+        );
+
+        // 修改四维矩阵
+        gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
+
+
+        // 修改片元颜色
+        gl.uniform4f(u_FragColor, 0.0, 0.0, 1.0, 1.0);  // r, g, b, a  蓝色，不透明
+
+        // 设置颜色
+        gl.clearColor(0, 0, 0, 1);
+
+        // 刷底色 使用上面设置的颜色，清空绘图区
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // 执行绘制
+        // gl.POINTS: 绘制一系列点。
+        gl.drawArrays(gl.LINES, 0, indices.length);
+
+
+
+        /**
+         * 绘制顶点方法 drawArrays()
+         *  gl.drawArrays(mode, first, count); 方法用于从向量数组中绘制图元。
+         *
+         *  // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/drawArrays
+         *
+         *  参数说明：
+         *      mode 【绘图模式】指定绘制图元的方式，可能值如下：
+         *          点：
+         *              gl.POINTS: 绘制一系列点。
+         * 
+         *          线：
+         *              gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
+         *              gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
+         *              gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
+         *              
+         *          面：
+         *              gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
+         *              gl.TRIANGLE_STRIP：绘制一个三角带。
+         *              gl.TRIANGLE_FAN：绘制一个三角扇。
+         *      
+         *      first【绘图起点】 指定从哪个点开始绘制。
+         *      count 【绘制数量】指定绘制需要使用到多少个点。
+         *
+         *
+         *
+         * 【WebGl 同步绘图原理总结】：
+         *
+         *   webgl 的同步绘图的现象，其实是由webgl 底层内置的颜色缓冲区导致的。
+         *
+         *   “胸有成竹”大家知道吧？这个颜色缓冲区就是“胸有成竹”的胸，它在电脑里会占用一块内存。
+         *
+         *   在我们使用webgl 绘图的时候，是先在颜色缓冲区中画出来，这样的图像还在胸中，所以外人看不见，只有webgl系统自己知道。
+         *
+         *   在我们想要将图像显示出来的时候，那就照着颜色缓冲区中的图像去画，这个步骤是webgl 内部自动完成的，我们只要执行绘图命令即可。
+         *
+         *   颜色缓冲区中存储的图像，只在当前线程有效。比如我们先在js 主线程中绘图，主线程结束后，会再去执行信息队列里的异步线程。
+         *
+         *   在执行异步线程时，颜色缓冲区就会被webgl 系统重置，我们曾经在主线程里的“胸有成竹”也就没了，既然没了，也就画不出那时的图像了。
+        
+         */
+
+    </script>
+</body>
+
+</html>
