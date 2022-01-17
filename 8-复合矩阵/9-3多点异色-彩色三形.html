@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HTML5-WebGL-复合矩阵-多点异色3-attribute数据合并-彩色三形</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: purple;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <img src="./img/绘制彩色三角形.jpg" alt="" />
+    <canvas id="canvas" width="300" height="150">
+        对不起！当您能看到这句话时，表示您当前的浏览器不支持canvas标签（IE9级以上才兼容），建议您升级浏览器后再试！
+        canvas尺寸：默认大小：宽300px, 高150px，最大尽量在4096px以内（当然不同的浏览器也会不一样）；
+        canvas尺寸设置：建议直接在canvas标签上设置，或者是在js中的canvas.width/height上设置，不建议在CSS样式中设置，但（在CSS中的优先级最高）；
+
+        Canvas的精彩：
+        Canvas精彩之处在于程序算法和艺术的结合。
+        它可以用理性的逻辑算法来寻找艺术中美的规律。
+        若想深入研究Canvas，可以再学习图形架构、图像算法、动画算法、艺术设计等。
+    </canvas>
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        // 声明项点位置变量   attribute是用于在顶点着色器中限定顶点相关的数据的
+        attribute vec4 a_Position;
+        attribute float a_PointSize;
+        attribute vec4 a_Color;
+        
+        // 注：GLSL 有三种变量类型（attribute，uniform，varying）
+
+        /* attribute说明：
+            attribute：是用于存储限定符（变量声明关键字），是专门用于向外部导出与点位相磁的对象的，类似于ES6中的export。 
+            注：attribute变量是只能在vertex shader中使用的变量。（它不能在fragment shader中声明attribute变量，也不能被fragment shader中使用）
+            vec4：变量类型，vec4是4维矢量对象
+            a_Position：变量名，在JS中会根据这个变量名导入变量。这个变量是一个指针，它在内存中是指向实际数据的存储位置，当我们在JS中修改了对应的值，那么在着色器中所对应的数据也会实修改。
+        */
+
+        /* varying说明：
+            varying：是一个声明全局变量的关键字，用于在vertex 和 fragment shader之间做数据传递用的。
+            一般vertex shader修改varying变量的值，然后fragment shader使用该varying变量的值。
+            因此varying变量在vertex和fragment shader二者之间的声明必须是一致的。
+        */
+        varying vec4 v_Color;
+
+        void main() {
+            // 点位            x,   y,   Z 
+            // gl_Position = vec4(0.0, 0.0, 0.0, 1.0); // 四维向量 x值越大越向右移, y值越大越向上移, z深度；默认0，0是画布的正中心，值为1 或 -1 时，是高度 或 宽度的一半(还要减去图形的一半)，
+            gl_Position = a_Position;
+
+            // 尺寸
+            gl_PointSize = a_PointSize; // 注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！
+
+            // 将a_Color的赋值给全局变量v_Color，这样就可以在片元着色器fragment中获取v_Color了。
+            v_Color = a_Color;
+
+        } //; 注： 这里main函数后面不要加分号;否则显示不出来！！！
+    </script>
+
+    <!-- 片元着色器-内容装饰 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+
+        /* uniform说明：
+            uniform变量是外部application程序传递给（vertex 和 fragment）着色器中的变量。
+            注：如果uniform变量在vertex和fragment两者之间声明方式完全一样，则它可以在vertex和fragment共享使用。（相当于一个被vertex和fragment shader共享的全局变量）
+        */
+
+        // 声明片元变量  uniform是用于在片元着色器中限定片元相关的数据的
+        // uniform vec4 u_FragColor;
+
+        varying vec4 v_Color; // 注：(虽然在顶点着色器中声明了v_Color)但这里也先声明，下面才能用哦【这个特性和uniform类似】！！
+
+        void main() {
+            // 设置片元色
+            // gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); // 四维向量 r, b, b, a  
+
+            // gl_FragColor = u_FragColor; // 四维向量 r, b, b, a
+
+            // v_Color是从vertex着色器中的全局变量
+            gl_FragColor = v_Color;
+
+            // 绘制圆：https://www.khronos.org/registry/OpenGL-Refpages/gl4/
+            // float dist = distance(gl_PointCoord, vec2(0.5, 0.5));  // distance(p1, p2) 计算两个点位的距离, gl_PointCoord 片元(像素)在一个点中的位置，此位置是被归一化的
+            // 如果 dist 小于 0.5表示该片元是在圆的范围中
+            // if(0.5 > dist) {
+            //     gl_FragColor = u_FragColor;
+            // } else {
+            //     discard; // 丢弃，即不在片元进行渲染
+            // }
+        } //; 注： 这里不要加分号;否则显示不出来！！！
+    </script>
+
+    <script type="module">
+        import { initShaders } from './js/webgl@utils.js'
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        const [width, height] = [window.innerWidth, window.innerHeight];
+
+        // 设置画布宽高
+        canvas.width = width;
+        canvas.height = height;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+        // 初始化着色器 生成 关联关系 程序对象gl.program
+        initShaders(gl, vsSource, fsSource);
+
+
+        /**
+         * 如何向点着色器 attribute 变量中写入、绘制多个点
+        */
+
+        // 1、建立合并数据源：顶点数据，颜色数据
+        const source = new Float32Array([
+        //  x    y          r,   g,   b,   a
+            0.0, 0.2,       1.0, 0.0, 0.0, 1.0, // => rgba(255, 0, 0, 1) 红
+            -0.2, -0.1,     0.0, 1.0, 0.0, 1.0, // => rgba(0, 255, 0, 1) 绿
+            0.2, -0.1,      0.0, 0.0, 1.0, 1.0, // => rgba(0, 0, 255, 1) 蓝
+
+
+            -0.2, -0.11,    0.0, 1.0, 0.0, 1.0, // => rgba(0, 255, 0, 1) 绿
+            0.2, -0.11,     0.0, 0.0, 1.0, 1.0, // => rgba(0, 0, 255, 1) 蓝
+            0.0, -0.41,     1.0, 0.0, 0.0, 1.0, // => rgba(255, 0, 0, 1) 红
+        ]);
+
+        // 获取元素字节数
+        const elementBytes = source.BYTES_PER_ELEMENT;
+
+        // 系列尺寸
+        const vertexSize = 2;   // 顶点 分量/列数
+        const colorSize = 4;    // 颜色 分量/列数
+
+        // 类目尺寸
+        const categorySize = vertexSize + colorSize;
+
+        // 类目字节数
+        const categoryBytes = categorySize * elementBytes;
+
+        // 系列字节索引位置
+        const vertexByteIndex = 0; // 顶点
+        const colorByteIndex = vertexSize * elementBytes; // 颜色
+
+        // 顶点总数大小
+        const sourceSize = source.length / categorySize;
+
+        // 2、建立顶点缓冲区对象
+        const sourceBuffer = gl.createBuffer();
+
+        // 3、绑定缓冲对象  // https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/bindBuffer
+        gl.bindBuffer(gl.ARRAY_BUFFER, sourceBuffer); // gl.ARRAY_BUFFER 包含顶点属性的Buffer，如顶点坐标，纹理坐标数据或顶点颜色数据。
+        /*  参数说明：
+            gl.bindBuffer(target, buffer);
+                target：目录对象（指定要把缓冲区放在webgl系统中的什么位置），gl.ARRAY_BUFFER、gl.ELEMENT_ARRAY_BUFFER
+                buffer：缓冲区
+        */
+
+        // 4、写入数据
+        // gl.bufferData(target, size, srcData Optional, usage, srcOffset, length Optional)
+        gl.bufferData(gl.ARRAY_BUFFER, source, gl.STATIC_DRAW);
+
+        
+
+        /**
+         * 顶点
+        */
+        // 5、获取顶点着色器存储空间 attribute 中的a_Position变量;
+        const a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+
+        // 6、修改attribute 变量
+        gl.vertexAttribPointer(
+            a_Position, // 顶点
+            vertexSize, // 顶点系列尺寸
+            gl.FLOAT,
+            false,
+            categoryBytes,  //  类目字节数
+            vertexByteIndex //  顶点字节索引位置
+        );
+        // gl.vertexAttribPointer(index, size, type, normalized, stride, offset);
+        /* 参数说明：
+         *      index:      attribute 变量，具体而言是指向存储attribute 变量的空间的指针
+         *      size:       系列尺寸，如：顶点、颜色等
+         *      type:       元素的数据类型，如：int 整型、浮点型等
+         *      normalized: 是否归一化
+         *      stride:     类目字节数
+         *      offset:     系列索引位置，如：顶点、颜色等的索引位置
+        */
+
+        // 7、赋能 (开起多点批处理)
+        gl.enableVertexAttribArray(a_Position);
+
+
+
+        /**
+         * 颜色
+        */
+        // 5、获取顶点着色器存储空间 attribute 中的a_Color变量;
+        const a_Color = gl.getAttribLocation(gl.program, 'a_Color');
+
+        // 6、修改attribute 变量
+        // gl.vertexAttribPointer(index, size, type, normalized, stride, offset);
+        gl.vertexAttribPointer(
+            a_Color, // 颜色
+            colorSize, // 颜色系列尺寸
+            gl.FLOAT,
+            false,
+            categoryBytes,  //  类目字节数
+            colorByteIndex  //  颜色字节索引位置
+        );
+
+        // 7、赋能 (开起多点批处理)
+        gl.enableVertexAttribArray(a_Color);
+
+
+
+
+        // 获取顶点着色器存储空间;
+        const a_PointSize = gl.getAttribLocation(gl.program, 'a_PointSize');
+
+        // 设置点的大小
+        gl.vertexAttrib1f(a_PointSize, 50.0);
+
+
+
+
+        /**
+         * 绘制顶点方法 drawArrays()
+         *  gl.drawArrays(mode, first, count); 方法用于从向量数组中绘制图元。
+         *
+         *  // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/drawArrays
+         *
+         *  参数说明：
+         *      mode 【绘图模式】指定绘制图元的方式，可能值如下：
+         *          点：
+         *              gl.POINTS: 绘制一系列点。
+         * 
+         *          线：
+         *              gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
+         *              gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
+         *              gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
+         *              
+         *          面：
+         *              gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
+         *              gl.TRIANGLE_STRIP：绘制一个三角带。
+         *              gl.TRIANGLE_FAN：绘制一个三角扇。
+         *      
+         *      first【绘图起点】 指定从哪个点开始绘制。
+         *      count 【绘制数量】指定绘制需要使用到多少个点。
+        **/
+
+        gl.clearColor(0, 0, 0, 1);
+
+        // 使用上面设置的颜色，清空绘图区
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // 执行绘制
+        // gl.drawArrays(gl.TRIANGLES, 0, 6); // 绘制6个 gl.TRIANGLES: 绘制一系列三角形。
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        /*
+        gl.drawArrays(mode, first, count);
+        参数说明：
+            mode: 绘图模式，比如：gl.POINTS 绘制点
+            first: 绘图起点(就是从哪个项点开始绘制)
+            count: 项点数量(就是要画多个项点)
+        */
+
+
+        /*
+        * WebGl 同步绘图原理总结!!!
+        *
+        *   webgl 的同步绘图的现象，其实是由webgl 底层内置的颜色缓冲区导致的。
+        *
+        *   “胸有成竹”大家知道吧？这个颜色缓冲区就是“胸有成竹”的胸，它在电脑里会占用一块内存。
+        *
+        *   在我们使用webgl 绘图的时候，是先在颜色缓冲区中画出来，这样的图像还在胸中，所以外人看不见，只有webgl系统自己知道。
+        *
+        *   在我们想要将图像显示出来的时候，那就照着颜色缓冲区中的图像去画，这个步骤是webgl 内部自动完成的，我们只要执行绘图命令即可。
+        *
+        *   颜色缓冲区中存储的图像，只在当前线程有效。比如我们先在js 主线程中绘图，主线程结束后，会再去执行信息队列里的异步线程。
+        *
+        *   在执行异步线程时，颜色缓冲区就会被webgl 系统重置，我们曾经在主线程里的“胸有成竹”也就没了，既然没了，也就画不出那时的图像了。
+        *
+        *   webgl 绘图原理我就说到这。接下来咱们用js控制顶点尺寸。
+        */
+
+    </script>
+</body>
