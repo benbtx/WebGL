@@ -1,5 +1,5 @@
 /**
- * 封装多边形对象
+ * 封装多边形、矩阵、纹理对象
  *   注：这个Poly类和之前的Poly类是很不一样的，
  *   因为这里的source数据源是将顶点数据，颜色数据合并到一起了
 */
@@ -29,14 +29,14 @@ const defAttr = () => ({
     //   value: 1   // uniform的变量值
     // },
   },
-  maps: {
+  maps: { // 纹理对象
     // u_Sampler:{
-    //   image,
-    //   format,
-    //   wrapS,
-    //   wrapT,
-    //   magFilter,
-    //   minFilter
+    //   image,   // 图形源
+    //   format,  // 数据类型，默认gl.RGB
+    //   wrapS,   // 对应纹理对象的TEXTURE_WRAP_S 属性
+    //   wrapT,   // 对应纹理对象的TEXTURE_WRAP_T 属性
+    //   magFilter, // 对应纹理对象的TEXTURE_MAG_FILTER 属性
+    //   minFilter  // 对应纹理对象的TEXTURE_MIN_FILTER属性
     // },
   }
 });
@@ -126,11 +126,14 @@ export default class Poly {
   };
 
   /**
-   * 
+   * 更新纹理贴图方法
    */
   updateMaps() {
-    const { gl, maps } = this
+    const { gl, maps } = this;
+
+    // 循环解构 u_Sampler纹理对象
     Object.entries(maps).forEach(([key, val], ind) => {
+      // ind纹理对象单元号，注：尽量不要超过8个
       const {
         format = gl.RGB,
         image,
@@ -138,58 +141,93 @@ export default class Poly {
         wrapT,
         magFilter,
         minFilter
-      } = val
+      } = val;
 
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1)
-      gl.activeTexture(gl[`TEXTURE${ind}`])
-      const texture = gl.createTexture()
-      gl.bindTexture(gl.TEXTURE_2D, texture)
+      // 对图像进行预处理，将图像垂直翻转
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); //是否垂直翻转，布尔值: 0/false: 不翻转，1/true: 翻转
 
+      // 纹理单元(激活ind号)
+      gl.activeTexture(gl[`TEXTURE${ind}`]);
+
+      // 建立纹理对象
+      const texture = gl.createTexture();
+
+      // 将纹理对象 装进 纹理单元
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+
+      // gl.texImage2D(target, level, internalformat, width, height, border, format, type, data);
       gl.texImage2D(
-        gl.TEXTURE_2D,
-        0,
-        format,
-        format,
-        gl.UNSIGNED_BYTE,
-        image
-      )
+        gl.TEXTURE_2D,  // 纹理类型
+        0,   // 基本图像等级
+        format, // gl.RGB,
+        format, // gl.RGB,
+        gl.UNSIGNED_BYTE, // 数据源数据类型
+        image // 数据源 img、video、canvas
+      );
 
+      // gl.texParameteri(target, pname, param);  //  纹理类型, 纹理参数的名称, 与pname相对应的纹理参数值
+      // 纹理容器：
+      //      处理非二次幂图像源的显示！
       wrapS && gl.texParameteri(
         gl.TEXTURE_2D,
         gl.TEXTURE_WRAP_S,
         wrapS
-      )
+      );
       wrapT && gl.texParameteri(
         gl.TEXTURE_2D,
         gl.TEXTURE_WRAP_T,
         wrapT
-      )
+      );
 
       magFilter && gl.texParameteri(
         gl.TEXTURE_2D,
-        gl.TEXTURE_MAG_FILTER,
+        gl.TEXTURE_MAG_FILTER,  // 纹理放大滤波器(纹理在webgl图形中被放大的情况)。
         magFilter
-      )
+      );
 
+      // 一般与分子贴图相关的方法 都大于9729的
       if (!minFilter || minFilter > 9729) {
-        gl.generateMipmap(gl.TEXTURE_2D)
-      }
+        // 创建分子贴图
+        gl.generateMipmap(gl.TEXTURE_2D);
+      };
 
       minFilter && gl.texParameteri(
         gl.TEXTURE_2D,
-        gl.TEXTURE_MIN_FILTER,
+        gl.TEXTURE_MIN_FILTER,  // 纹理缩小滤波器(纹理在webgl图形中被缩小的情况)。
         minFilter
-      )
 
-      const u = gl.getUniformLocation(gl.program, key)
-      gl.uniform1i(u, ind)
-    })
+        /** 可用的滤镜：
+          *     gl.LINEAR   // 线性滤镜 9729， 获取纹理坐标点附近4个像素的加权平均值，效果平滑
+          *     gl.NEAREST  // 最近滤镜 9728， 获得最靠近纹理坐标点的像素 ，效果锐利 
+          * 
+          *  注：以下这4个与分子贴图相关的参数适合比较大的贴图，若是比较小的贴图，使用LINEAR 或NEAREST 就好。
+          *     gl.NEAREST_MIPMAP_LINEAR 9986   // (默认)
+          *     gl.NEAREST_MIPMAP_NEAREST 9984
+          *     gl.LINEAR_MIPMAP_NEAREST 9985
+          *     l.LINEAR_MIPMAP_LINEAR  9987
+         **/
+      );
+
+      // 获取片元(像素)着色器中的 采样器
+      const u_sampler = gl.getUniformLocation(gl.program, key);
+
+      // 在纹理单元中找到对应的纹理对象
+      gl.uniform1i(u_sampler, ind);
+    });
   };
 
   // 执行绘图方法
   draw(type = this.type) {
     const { gl, sourceSize } = this;
     gl.drawArrays(gl[type], 0, sourceSize);
+
+    // const { gl, sourceSize, circleDot, u_IsPOINTS } = this;
+    // for (let type of types) {
+    //   // 如果绘制的是圆点，就将 u_IsPOINTS 变量设为true, 反之则设为false;
+    //   circleDot && gl.uniform1f(u_IsPOINTS, 'POINTS' === type);
+    //   gl.drawArrays(gl[type], 0, sourceSize);
+    // }
+
     /**
      * 绘制顶点方法 drawArrays()
      *  gl.drawArrays(mode, first, count); 方法用于从向量数组中绘制图元。

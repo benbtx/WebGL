@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML5-WebGL-颜色与纹理-纹理的基本概念</title>
+    <title>HTML5-WebGL-颜色与纹理-纹理容器-纹理复制</title>
     <style>
         body {
             margin: 0;
@@ -25,7 +25,7 @@
 </head>
 
 <body>
-    <img src="./img/纹理.jpg" alt="" />
+    <img src="./img/纹理容器.jpg" alt="" />
     <canvas id="canvas"></canvas>
 
     <!-- 
@@ -89,16 +89,24 @@
 
         // 对图像进行预处理，将图像垂直翻转
         // 注：由于Image对象遵守的是栅格坐标系，栅格坐标系的y轴朝下，而uv坐标系的y朝上，两者相反，所以画出的图形反了。
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); // 0: 不翻转，1: 翻转
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); //是否垂直翻转，布尔值: 0/false: 不翻转，1/true: 翻转
 
 
+        
 
         // 1、数据源 矩形
+        const maxU = 2.0; // 水平
+        const maxV = 2.0; // 垂直
+        /**
+         * uv坐标系:
+         *      uv坐标系的坐标基底(单位)分别是1个图片的宽 和 1个图片的高，也就是说，一个单位等于图片本身的宽 或 高。
+         *      uv坐标系是从左下角为基点：u表示水平方向，越向右值越大，v表示垂直方向，越向上值越大！！
+        */
         const source = new Float32Array([
-            -0.5, 0.5, 0.0, 1.0,    // 左上角顶点位置
-            -0.5, -0.5, 0.0, 0.0,   // 左下角顶点位置
-            0.5, 0.5, 1.0, 1.0,     // 右下角顶点位置
-            0.5, -0.5, 1.0, 0.0     // 右上角顶点位置
+            -0.5, 0.5, 0.0, maxV,    // 左上角顶点位置
+            -0.5, -0.5, 0.0, 0.0,    // 左下角顶点位置
+            0.5, 0.5, maxU, maxV,    // 右下角顶点位置
+            0.5, -0.5, maxU, 0.0     // 右上角顶点位置
         ]);
 
         const fSize = source.BYTES_PER_ELEMENT;
@@ -184,8 +192,11 @@
 
         // 建立图像对象
         const image = new Image();
-        image.src = './img/erha.jpg';
+        image.src = './img/erha.jpg'; 
+        // image.src = './img/erha3.jpg';  // 注：这是一张300px*300px的图片，默认情况下纹理贴图支持图像源的尺寸只能是2的n次方(2次幂)，比如2、4、8、16、……、256、512等。
+                                        // 如果显示非二次幂图像源就得设置一下纹理的容器=>(非二次幂图像源的显示)！！
         image.onload = function (target) {
+
             // gl.texImage2D(target, level, internalformat, width, height, border, format, type, data);
             gl.texImage2D(
                 gl.TEXTURE_2D,  // 纹理类型
@@ -202,6 +213,23 @@
                 gl.TEXTURE_MIN_FILTER,  //  TEXTURE_MIN_FILTER：纹理缩小滤波器(纹理在webgl图形中被缩小的情况)。TEXTURE_MAG_FILTER：纹理放大滤波器(纹理在webgl图形中被放大的情况)。
                 gl.LINEAR   // 线性滤镜
             );
+
+            // 纹理容器：
+            //      处理非二次幂图像源的显示！
+            gl.texParameteri(
+                gl.TEXTURE_2D,
+                gl.TEXTURE_WRAP_S,
+
+                // gl.CLAMP_TO_EDGE     // 二次幂图像源的显示，注：只有CLAMP_TO_EDGE 才能实现非二次幂图像源的显示，其它的参数都不可以。
+                gl.REPEAT               // 纹理复制 注：图像源的尺寸必须是2的n次方(2次幂)
+            );
+            gl.texParameteri(
+                gl.TEXTURE_2D,
+                gl.TEXTURE_WRAP_T,
+                // gl.CLAMP_TO_EDGE     // 二次幂图像源的显示
+                gl.REPEAT               // 纹理复制
+            );
+
 
             const u_Sampler = gl.getUniformLocation(gl.program, 'u_Sampler');
             gl.uniform1i(u_Sampler, 0);

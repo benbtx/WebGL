@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML5-WebGL-颜色与纹理-纹理的基本概念</title>
+    <title>HTML5-WebGL-颜色与纹理-纹理模块化-Poly2.js的封装</title>
     <style>
         body {
             margin: 0;
@@ -62,6 +62,7 @@
 
     <script type="module">
         import { initShaders, ScaleLinear } from './js/webgl@utils.js';
+        import Poly from './js/Poly2.js';
 
         // 获取画布DOM
         const canvas = document.querySelector('#canvas');
@@ -87,13 +88,8 @@
         // 设置颜色
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-        // 对图像进行预处理，将图像垂直翻转
-        // 注：由于Image对象遵守的是栅格坐标系，栅格坐标系的y轴朝下，而uv坐标系的y朝上，两者相反，所以画出的图形反了。
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); // 0: 不翻转，1: 翻转
 
-
-
-        // 1、数据源 矩形
+        // 数据源 矩形
         const source = new Float32Array([
             -0.5, 0.5, 0.0, 1.0,    // 左上角顶点位置
             -0.5, -0.5, 0.0, 0.0,   // 左下角顶点位置
@@ -101,111 +97,33 @@
             0.5, -0.5, 1.0, 0.0     // 右上角顶点位置
         ]);
 
-        const fSize = source.BYTES_PER_ELEMENT;
-
-        // 获取元素字节数
-        const elementBytes = source.BYTES_PER_ELEMENT;
-
-        // 系列尺寸
-        const posSize = 2;
-        const pinSize = 2;
-
-        // 类目尺寸
-        const categorySize = posSize + pinSize;
-
-        // 类目字节数
-        const categoryBytes = categorySize * elementBytes;
-
-        // 系列字节索引位置
-        const posByteIndex = 0; // 顶点
-        const pinByteIndex = posSize * elementBytes; // 颜色
-
-        // 顶点总数大小
-        const sourceSize = source.length / categorySize;
-
-        // 2、建立顶点缓冲区对象
-        const sourceBuffer = gl.createBuffer();
-
-        // 3、绑定缓冲对象
-        gl.bindBuffer(gl.ARRAY_BUFFER, sourceBuffer);
-
-        // 4、写入数据
-        gl.bufferData(gl.ARRAY_BUFFER, source, gl.STATIC_DRAW);
-
-
-
-        // 5、获取顶点着色器存储空间 attribute 中的a_Position变量;
-        const a_Position = gl.getAttribLocation(gl.program, 'a_Position');
-
-        // 6、修改attribute 变量
-        gl.vertexAttribPointer(
-            a_Position,
-            posSize,
-            gl.FLOAT,
-            false,
-            categoryBytes,
-            posByteIndex
-        );
-
-        // 7、赋能 (开起多点批处理)
-        gl.enableVertexAttribArray(a_Position);
-
-
-
-        // 5、获取顶点着色器存储空间 attribute 中的a_Pin变量;
-        const a_Pin = gl.getAttribLocation(gl.program, 'a_Pin');
-
-        // 6、修改attribute 变量
-        gl.vertexAttribPointer(
-            a_Pin, // 顶点
-            pinSize, // 顶点系列尺寸
-            gl.FLOAT,   // 元素的数据类型
-            false,  // 是否归一化
-            categoryBytes,  //  类目字节数
-            pinByteIndex    //  顶点字节索引位置
-        );
-
-        // 7、赋能 (开起多点批处理)
-        gl.enableVertexAttribArray(a_Pin);
-
-
-        /**
-         * 三个角色
-         *      - 纹理单元
-         *      - 纹理对象
-         *      - Image 图像
-        */
-        // 纹理单元(激活0号)
-        gl.activeTexture(gl.TEXTURE0);
-        // 建立纹理对象
-        const texture = gl.createTexture();
-        // 将纹理对象 装进 纹理单元
-        gl.bindTexture(gl.TEXTURE_2D, texture);
+        // 实例化 纹理模块化方法
+        const rect = new Poly({
+            gl,
+            source,
+            type: 'TRIANGLE_STRIP', // 绘图方式：TRIANGLE_STRIP 三角带
+            attributes: {
+                a_Position: {
+                    size: 2,
+                    index: 0
+                },
+                a_Pin: {
+                    size: 2,
+                    index: 2
+                }
+            }
+        });
 
         // 建立图像对象
         const image = new Image();
         image.src = './img/erha.jpg';
         image.onload = function (target) {
-            // gl.texImage2D(target, level, internalformat, width, height, border, format, type, data);
-            gl.texImage2D(
-                gl.TEXTURE_2D,  // 纹理类型
-                0,  // 基本图像等级
-                gl.RGB,
-                gl.RGB,
-                gl.UNSIGNED_BYTE,
-                image
-            );
-
-            // gl.texParameteri(target, pname, param);  //  纹理类型, 纹理参数的名称, 与pname相对应的纹理参数值
-            gl.texParameteri(
-                gl.TEXTURE_2D,  // 二维纹理
-                gl.TEXTURE_MIN_FILTER,  //  TEXTURE_MIN_FILTER：纹理缩小滤波器(纹理在webgl图形中被缩小的情况)。TEXTURE_MAG_FILTER：纹理放大滤波器(纹理在webgl图形中被放大的情况)。
-                gl.LINEAR   // 线性滤镜
-            );
-
-            const u_Sampler = gl.getUniformLocation(gl.program, 'u_Sampler');
-            gl.uniform1i(u_Sampler, 0);
-
+            rect.maps = {
+                u_Sampler: {
+                    image
+                }
+            };
+            rect.updateMaps();
             render();
         };
 
@@ -213,8 +131,8 @@
         function render() {
             // 刷底色 使用上面设置的颜色，清空绘图区
             gl.clear(gl.COLOR_BUFFER_BIT);
-            // 执行绘制 三角带
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, sourceSize);
+            // 执行绘制
+            rect.draw();
         };
 
 

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML5-WebGL-颜色与纹理-纹理的基本概念</title>
+    <title>HTML5-WebGL-颜色与纹理-多纹理模型-魔方</title>
     <style>
         body {
             margin: 0;
@@ -25,7 +25,7 @@
 </head>
 
 <body>
-    <img src="./img/纹理.jpg" alt="" />
+    <img src="./img/多纹理模型.jpg" alt="" />
     <canvas id="canvas"></canvas>
 
     <!-- 
@@ -35,12 +35,18 @@
     -->
     <!-- 顶点着色器-主体架构 -->
     <script id="vertexShader" type="x-shader/x-vertex">
+        // 声明、暴露-顶点位置变量
         attribute vec4 a_Position;
+
         attribute vec2 a_Pin;
+        
+        //声明、暴露-四维模型矩阵变量
+        uniform mat4 u_ModelMatrix;
+
         varying vec2 v_Pin;
         
         void main(){
-            gl_Position = a_Position;
+            gl_Position = u_ModelMatrix * a_Position;
             v_Pin = a_Pin;
         }
     </script>
@@ -61,6 +67,7 @@
     </script>
 
     <script type="module">
+        import { Matrix4, Vector3, Quaternion } from './js/three@0.129.0.module.js'
         import { initShaders, ScaleLinear } from './js/webgl@utils.js';
 
         // 获取画布DOM
@@ -79,8 +86,8 @@
         initShaders(gl, vsSource, fsSource);
 
 
-        // 开启透明度合成功能
-        gl.enable(gl.BLEND);
+        // 开启深度缓冲区
+        gl.enable(gl.DEPTH_TEST); // DEPTH_TEST 深度缓冲区：和现实生活中一样，前面的物体会遮挡后面的物体（只能看到前面的图形,因为后面的图形被前面的图形遮挡了);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // 合成方法
 
 
@@ -89,16 +96,60 @@
 
         // 对图像进行预处理，将图像垂直翻转
         // 注：由于Image对象遵守的是栅格坐标系，栅格坐标系的y轴朝下，而uv坐标系的y朝上，两者相反，所以画出的图形反了。
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); // 0: 不翻转，1: 翻转
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); //是否垂直翻转，布尔值: 0/false: 不翻转，1/true: 翻转
 
 
 
-        // 1、数据源 矩形
+
+        // 1、数据源 正方体（6个面）
+        /**
+         * uv坐标系:
+         *      uv坐标系的坐标基底(单位)分别是1个图片的宽 和 1个图片的高，也就是说，一个单位等于图片本身的宽 或 高。
+         *      uv坐标系是从左下角为基点：u表示水平方向，越向右值越大，v表示垂直方向，越向上值越大！！
+        */
         const source = new Float32Array([
-            -0.5, 0.5, 0.0, 1.0,    // 左上角顶点位置
-            -0.5, -0.5, 0.0, 0.0,   // 左下角顶点位置
-            0.5, 0.5, 1.0, 1.0,     // 右下角顶点位置
-            0.5, -0.5, 1.0, 0.0     // 右上角顶点位置
+            // 3个顶点位置的分量，2个图钉位置的分量
+            -0.5, -0.5, -0.5, 0, 0,
+            -0.5, 0.5, -0.5, 0, 0.5,
+            0.5, -0.5, -0.5, 0.25, 0,
+            -0.5, 0.5, -0.5, 0, 0.5,
+            0.5, 0.5, -0.5, 0.25, 0.5,
+            0.5, -0.5, -0.5, 0.25, 0,
+
+            -0.5, -0.5, 0.5, 0.25, 0,
+            0.5, -0.5, 0.5, 0.5, 0,
+            -0.5, 0.5, 0.5, 0.25, 0.5,
+            -0.5, 0.5, 0.5, 0.25, 0.5,
+            0.5, -0.5, 0.5, 0.5, 0,
+            0.5, 0.5, 0.5, 0.5, 0.5,
+
+            -0.5, 0.5, -0.5, 0.5, 0,
+            -0.5, 0.5, 0.5, 0.5, 0.5,
+            0.5, 0.5, -0.5, 0.75, 0,
+            -0.5, 0.5, 0.5, 0.5, 0.5,
+            0.5, 0.5, 0.5, 0.75, 0.5,
+            0.5, 0.5, -0.5, 0.75, 0,
+
+            -0.5, -0.5, -0.5, 0, 0.5,
+            0.5, -0.5, -0.5, 0.25, 0.5,
+            -0.5, -0.5, 0.5, 0, 1,
+            -0.5, -0.5, 0.5, 0, 1,
+            0.5, -0.5, -0.5, 0.25, 0.5,
+            0.5, -0.5, 0.5, 0.25, 1,
+
+            -0.5, -0.5, -0.5, 0.25, 0.5,
+            -0.5, -0.5, 0.5, 0.25, 1,
+            -0.5, 0.5, -0.5, 0.5, 0.5,
+            -0.5, -0.5, 0.5, 0.25, 1,
+            -0.5, 0.5, 0.5, 0.5, 1,
+            -0.5, 0.5, -0.5, 0.5, 0.5,
+
+            0.5, -0.5, -0.5, 0.5, 0.5,
+            0.5, 0.5, -0.5, 0.75, 0.5,
+            0.5, -0.5, 0.5, 0.5, 1,
+            0.5, -0.5, 0.5, 0.5, 1,
+            0.5, 0.5, -0.5, 0.75, 0.5,
+            0.5, 0.5, 0.5, 0.75, 1,
         ]);
 
         const fSize = source.BYTES_PER_ELEMENT;
@@ -107,7 +158,7 @@
         const elementBytes = source.BYTES_PER_ELEMENT;
 
         // 系列尺寸
-        const posSize = 2;
+        const posSize = 3;
         const pinSize = 2;
 
         // 类目尺寸
@@ -169,6 +220,22 @@
         gl.enableVertexAttribArray(a_Pin);
 
 
+        // 模型矩阵
+        const modelMatrix = new Matrix4();
+        // 模型矩阵在x(垂直)方向的旋转量，值越大旋转速度越快
+        const mx = new Matrix4().makeRotationX(0.02); // 正数从下到上旋转
+        // const mx = new Matrix4().makeRotationX(-0.03); // 负数从上到下旋转
+
+        // 模型矩阵在y(水平)方向的旋转量，值越大旋转速度越快
+        const my = new Matrix4().makeRotationY(0.02);// 正数从左到右旋转
+        // const my = new Matrix4().makeRotationY(-0.01);  // 负数从左到右旋转
+
+
+        // 获取顶点着色器存储空间 attribute 中的u_ModelMatrix变量;
+        const u_ModelMatrix = gl.getUniformLocation(gl.program, 'u_ModelMatrix');
+        gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+
+
         /**
          * 三个角色
          *      - 纹理单元
@@ -184,8 +251,9 @@
 
         // 建立图像对象
         const image = new Image();
-        image.src = './img/erha.jpg';
+        image.src = './img/mf.jpg';
         image.onload = function (target) {
+
             // gl.texImage2D(target, level, internalformat, width, height, border, format, type, data);
             gl.texImage2D(
                 gl.TEXTURE_2D,  // 纹理类型
@@ -199,8 +267,8 @@
             // gl.texParameteri(target, pname, param);  //  纹理类型, 纹理参数的名称, 与pname相对应的纹理参数值
             gl.texParameteri(
                 gl.TEXTURE_2D,  // 二维纹理
-                gl.TEXTURE_MIN_FILTER,  //  TEXTURE_MIN_FILTER：纹理缩小滤波器(纹理在webgl图形中被缩小的情况)。TEXTURE_MAG_FILTER：纹理放大滤波器(纹理在webgl图形中被放大的情况)。
-                gl.LINEAR   // 线性滤镜
+                gl.TEXTURE_MIN_FILTER,  //  纹理缩小滤波器(纹理在webgl图形中被缩小的情况)。TEXTURE_MAG_FILTER：纹理放大滤波器(纹理在webgl图形中被放大的情况)。
+                gl.LINEAR   // 线性滤镜 (默认)， 获取纹理坐标点附近4个像素的加权平均值，效果平滑
             );
 
             const u_Sampler = gl.getUniformLocation(gl.program, 'u_Sampler');
@@ -214,8 +282,28 @@
             // 刷底色 使用上面设置的颜色，清空绘图区
             gl.clear(gl.COLOR_BUFFER_BIT);
             // 执行绘制 三角带
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, sourceSize);
+            gl.drawArrays(gl.TRIANGLES, 0, sourceSize);
         };
+
+        // 连续渲染
+        !(function loop() {
+
+            // 矩阵只在 x 方向上的旋转值
+            // modelMatrix.multiply(mx);
+
+            // 矩阵只在 y 方向上的旋转值
+            // modelMatrix.multiply(my);
+
+            // 矩阵同时在x 和 y 方向上的交叉旋转
+            modelMatrix.multiply(mx).multiply(my);
+
+            gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+
+            render();
+
+            requestAnimationFrame(loop);
+        })();
+
 
 
 
