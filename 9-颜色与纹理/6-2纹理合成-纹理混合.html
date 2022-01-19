@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML5-WebGL-颜色与纹理-纹理合成-纹理混合</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: purple;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <img src="./img/纹理混合.jpg" alt="" />
+    <canvas id="canvas"></canvas>
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        attribute vec4 a_Position;
+        attribute vec2 a_Pin;
+        varying vec2 v_Pin;
+        
+        void main(){
+            gl_Position = a_Position;
+            v_Pin = a_Pin;
+        }
+    </script>
+
+    <!-- 片元(像素)着色器-内容装饰 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+        
+        // 采样器 - 原始图像片元
+        uniform sampler2D u_Sampler;
+
+        // 采样器 - 纹理图案片元
+        uniform sampler2D u_Pattern;
+
+        varying vec2 v_Pin; // 注：(虽然在顶点着色器中声明了v_Pin)但这里也先声明，下面才能用哦【这个特性和uniform类似】！！
+        
+        void main() {
+            vec4 o = texture2D(u_Sampler, v_Pin);
+            vec4 p = texture2D(u_Pattern, v_Pin);
+
+            // 合成纹理-片元相乘(正片叠底)
+            // gl_FragColor = o * p;
+
+
+            // 合成纹理-纹理混合，mix()方法取两个值之间的线性差值（也就是按照比例对两个纹理进行合成的方法，它返回的数据类型会因其合成对象的不同而不同）。
+            // mix()方法：https://www.khronos.org/registry/OpenGL-Refpages/gl4
+
+            // gl_FragColor = mix(o, p, 0.0); // 只显原始图像片元o
+            // gl_FragColor = mix(o, p, 1.0); // 只显示纹理图案片元p
+
+            gl_FragColor = mix(o, p, 0.5); // 同时显示原始图像o 和 纹理图案片元p
+            
+        }
+    </script>
+
+    <script type="module">
+        import { initShaders, ImgPromise, ScaleLinear } from './js/webgl@utils.js';
+        import Poly from './js/Poly2.js';
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+        // 初始化着色器 生成 关联关系 程序对象gl.program
+        initShaders(gl, vsSource, fsSource);
+
+
+        // 开启透明度合成功能
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // 合成方法
+
+
+        // 设置颜色
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+
+        // 数据源 矩形
+        const source = new Float32Array([
+            -0.4, 0.8, 0.0, 1.0,    // 左上角顶点位置
+            -0.4, -0.8, 0.0, 0.0,   // 左下角顶点位置
+            0.4, 0.8, 1.0, 1.0,     // 右下角顶点位置
+            0.4, -0.8, 1.0, 0.0     // 右上角顶点位置
+        ]);
+
+        // 实例化 纹理模块化方法
+        const rect = new Poly({
+            gl,
+            source,
+            type: 'TRIANGLE_STRIP', // 绘图方式：TRIANGLE_STRIP 三角带
+            attributes: {
+                a_Position: {
+                    size: 2,
+                    index: 0
+                },
+                a_Pin: {
+                    size: 2,
+                    index: 2
+                }
+            }
+        });
+
+        // 建立图像对象
+        const img1 = new Image();
+        img1.src = './img/dress.jpg';
+
+        const img2 = new Image();
+        img2.src = './img/pattern1.jpg';
+
+        // 多图加载
+        Promise.all([ImgPromise(img1), ImgPromise(img2)]).then((_res) => {
+            rect.maps = {
+                u_Sampler: {
+                    image: img1
+                },
+                u_Pattern: {
+                    image: img2
+                }
+            };
+            rect.updateMaps();
+            render();
+        });
+
+        // 渲染
+        function render() {
+            // 刷底色 使用上面设置的颜色，清空绘图区
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            // 执行绘制
+            rect.draw();
+        };
+
+
+
+
+
+        /**
+         * 绘制顶点方法 drawArrays()
+         *  gl.drawArrays(mode, first, count); 方法用于从向量数组中绘制图元。
+         *
+         *  // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/drawArrays
+         *
+         *  参数说明：
+         *      mode 【绘图模式】指定绘制图元的方式，可能值如下：
+         *          点：
+         *              gl.POINTS: 绘制一系列点。
+         * 
+         *          线：
+         *              gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
+         *              gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
+         *              gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
+         *              
+         *          面：
+         *              gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
+         *              gl.TRIANGLE_STRIP：绘制一个三角带。
+         *              gl.TRIANGLE_FAN：绘制一个三角扇。
+         *      
+         *      first【绘图起点】 指定从哪个点开始绘制。
+         *      count 【绘制数量】指定绘制需要使用到多少个点。
+         *
+         *
+         *
+         * 【WebGl 同步绘图原理总结】：
+         *
+         *   webgl 的同步绘图的现象，其实是由webgl 底层内置的颜色缓冲区导致的。
+         *
+         *   “胸有成竹”大家知道吧？这个颜色缓冲区就是“胸有成竹”的胸，它在电脑里会占用一块内存。
+         *
+         *   在我们使用webgl 绘图的时候，是先在颜色缓冲区中画出来，这样的图像还在胸中，所以外人看不见，只有webgl系统自己知道。
+         *
+         *   在我们想要将图像显示出来的时候，那就照着颜色缓冲区中的图像去画，这个步骤是webgl 内部自动完成的，我们只要执行绘图命令即可。
+         *
+         *   颜色缓冲区中存储的图像，只在当前线程有效。比如我们先在js 主线程中绘图，主线程结束后，会再去执行信息队列里的异步线程。
+         *
+         *   在执行异步线程时，颜色缓冲区就会被webgl 系统重置，我们曾经在主线程里的“胸有成竹”也就没了，既然没了，也就画不出那时的图像了。
+        
+         */
+
+    </script>
+</body>
+
+</html>

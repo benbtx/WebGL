@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CallBack与Promise</title>
+    <style>
+        code{
+            display: block;
+            margin: 50px;
+            padding: 50px;
+            border-radius: 8px;
+            background: #333;
+        }
+        pre{
+            font-size: 16px;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <code>
+        <pre>
+            {
+                (async () => {
+                    // CallBack
+                    const Fn1 = (cb) => {
+                        setTimeout(() => {
+                            cb('执行回调！');
+                        }, 3000);
+                    };
+    
+                    // Fn1((res) => {
+                    await Fn1((res) => { // 注： async 和 await 只能用于返回的是一个Promise的异步函数，所以这里的await无效
+                        console.log(res);
+                    });
+    
+                    console.log('CallBack111');
+                })()
+            };
+    
+            {
+                // Promise
+                const Fn1 = () => {
+                    return new Promise((resolve, reject) => {
+                        setTimeout(() => {
+                            resolve('执行resolve！');
+                        }, 3000);
+                    })
+    
+                };
+                Fn1().then((res) => {
+                    console.log(res);
+                });
+    
+                console.log('Promise');
+            };
+    
+            {
+                (async () => {
+    
+                    // Promise2
+                    const Fn1 = () => {
+                        return new Promise((resolve, reject) => {
+                            setTimeout(() => {
+                                resolve('执行resolve2！');
+                            }, 3000);
+                        })
+                    };
+    
+                    /**
+                     * 通过ES7中的 async 和 await 可以控制代码的执行顺序
+                     * 注： async 和 await 只能用于返回的是一个Promise的异步函数
+                     * https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Promise
+                    */
+    
+                    await Fn1().then((res) => {
+                        console.log(res);
+                    });
+                    console.info('%c Promise2-1，-------> 当前面的代码执行完以后，才会扫行我！', 'font-size:18px;color:blue;');
+    
+                    const res = await Fn1();
+                    console.log(res);
+    
+                    console.info('%c Promise2-2，-------> 当前面的代码执行完以后，才会扫行我！', 'font-size:18px;color:purple;');
+    
+                    // 注：如果有多个Promise异步函数，需要全部成功执行，还可以用Promese.all([fn1, fn2, fn3...])方法来执行！！
+                    // 注：如果有多个Promise异步函数，只要一个成功执行，还可以用Promese.any([fn1, fn2, fn3...])方法来执行！！
+                })()
+            };
+        </pre>
+    </code>
+    <script>
+        {
+            (async () => {
+                // CallBack
+                const Fn1 = (cb) => {
+                    setTimeout(() => {
+                        cb('执行回调！');
+                    }, 3000);
+                };
+
+                // Fn1((res) => {
+                await Fn1((res) => { // 注： async 和 await 只能用于返回的是一个Promise的异步函数，所以这里的await无效
+                    console.log(res);
+                });
+
+                console.log('CallBack111');
+            })()
+        };
+
+        {
+            // Promise
+            const Fn1 = () => {
+                return new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        resolve('执行resolve！');
+                    }, 3000);
+                })
+
+            };
+            Fn1().then((res) => {
+                console.log(res);
+            });
+
+            console.log('Promise');
+        }
+
+        {
+            (async () => {
+
+                // Promise2
+                const Fn1 = () => {
+                    return new Promise((resolve, reject) => {
+                        setTimeout(() => {
+                            resolve('执行resolve2！');
+                        }, 3000);
+                    })
+                };
+
+                /**
+                 * 通过ES7中的 async 和 await 可以控制代码的执行顺序
+                 * 注： async 和 await 只能用于返回的是一个Promise的异步函数
+                 * https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Promise
+                */
+
+                await Fn1().then((res) => {
+                    console.log(res);
+                });
+                console.info('%c Promise2-1，-------> 当前面的代码执行完以后，才会扫行我！', 'font-size:18px;color:blue;');
+
+                const res = await Fn1();
+                console.log(res);
+
+                console.info('%c Promise2-2，-------> 当前面的代码执行完以后，才会扫行我！', 'font-size:18px;color:purple;');
+
+                // 注：如果有多个Promise异步函数，需要全部成功执行，还可以用Promese.all([fn1, fn2, fn3...])方法来执行！！
+                // 注：如果有多个Promise异步函数，只要一个成功执行，还可以用Promese.any([fn1, fn2, fn3...])方法来执行！！
+            })()
+        }
+    </script>
+</body>
+
+</html>

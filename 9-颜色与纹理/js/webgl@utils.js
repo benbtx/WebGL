@@ -117,4 +117,20 @@ function ScaleLinear(ax, ay, bx, by) {
     };
 };
 
-export { initShaders, glToCssPos, getMousePosInWebgl, ScaleLinear };
+/**
+ * Image 加载事件
+ * @param {Image} img 
+ * @returns {Image}
+ */
+function ImgPromise(img) {
+    return new Promise((resolve, reject) => {
+        img.onload = function() {
+            resolve(img);
+        };
+        img.onerror = function(err) {
+            reject(err);
+        };
+    });
+};
+
+export { initShaders, glToCssPos, getMousePosInWebgl, ScaleLinear, ImgPromise };

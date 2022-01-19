@@ -30,25 +30,29 @@ export class Track {
         this.target = target;   // 当前对象(时间轨上的目标对象)
         this.parent = null;     // 当前对象的父级对象
         this.start = 0;         // 时间轨起始时间
+        this.prevTime = 0;      // 上一次关键帧的时间
         this.timeLen = 5;       // 时长(时间轨总时长)
         this.loop = false;      // 是否循环
-        this.keyMap = new Map();// 所有属性的关键帧集合
-        /*所有属性的关键帧集合 - 数据结构: [
-            [
-                '对象属性1',
-                [
-                    [时间1,属性值], //关键帧
-                    [时间2,属性值], //关键帧
-                ]
-            ],
-            [
-                '对象属性2',
-                [
-                    [时间1,属性值], //关键帧
-                    [时间2,属性值], //关键帧
-                ]
-            ],
-        ]*/
+        this.keyMap = new Map(  // 所有属性的关键帧集合
+            // [
+            //     [
+            //         '对象属性1',
+            //         [
+            //             [时间1, 对象属性1的值], //关键帧
+            //             [时间2, 对象属性1的值], //关键帧
+            //         ]
+            //     ],
+            //     [
+            //         '对象属性2',
+            //         [
+            //             [时间1, 对象属性2的值], //关键帧
+            //             [时间2, 对象属性2的值], //关键帧
+            //         ]
+            //     ],
+            // ]
+        );
+        this.onEnd = () => {};  // 轨道运行结束时
+        
     };
 
     /**
@@ -85,10 +89,18 @@ export class Track {
      * @param {*} t 
      */
     update(t) {
-        const { target, start, loop, timeLen, keyMap } = this;
+        const { target, start, loop, timeLen, keyMap, prevTime } = this;
 
-        // 本地时间
+        // 当前本地时间
         let time = t - start;
+        // 当轨道运行结束时
+        if(timeLen >= prevTime && timeLen < time) {
+            this.onEnd();
+        }
+
+        // 更新上一次关键帧的时间
+        this.prevTime = time;
+
         if (loop) {
             time = time % timeLen;
         }
