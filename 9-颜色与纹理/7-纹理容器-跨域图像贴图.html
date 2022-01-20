@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML5-WebGL-颜色与纹理-跨域图像贴图(用跨域图像做贴图)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: purple;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <img src="./img/跨域图像贴图.jpg" alt="" />
+    <canvas id="canvas"></canvas>
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        attribute vec4 a_Position;
+        attribute vec2 a_Pin;
+        varying vec2 v_Pin;
+        
+        void main(){
+            gl_Position = a_Position;
+            v_Pin = a_Pin;
+        }
+    </script>
+
+    <!-- 片元(像素)着色器-内容装饰 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+        
+        // 采样器
+        uniform sampler2D u_Sampler;
+
+        varying vec2 v_Pin; // 注：(虽然在顶点着色器中声明了v_Pin)但这里也先声明，下面才能用哦【这个特性和uniform类似】！！
+        
+        void main() {
+            gl_FragColor = texture2D(u_Sampler, v_Pin);
+        }
+    </script>
+
+    <script type="module">
+        import { initShaders, ScaleLinear } from './js/webgl@utils.js';
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+        // 初始化着色器 生成 关联关系 程序对象gl.program
+        initShaders(gl, vsSource, fsSource);
+
+
+        // 开启透明度合成功能
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // 合成方法
+
+
+        // 设置颜色
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+        // 对图像进行预处理，将图像垂直翻转
+        // 注：由于Image对象遵守的是栅格坐标系，栅格坐标系的y轴朝下，而uv坐标系的y朝上，两者相反，所以画出的图形反了。
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); //是否垂直翻转，布尔值: 0/false: 不翻转，1/true: 翻转
+
+        
+
+        // 1、数据源 矩形
+        const source = new Float32Array([
+            -0.5, 0.5, 0.0, 1.0,    // 左上角顶点位置
+            -0.5, -0.5, 0.0, 0.0,   // 左下角顶点位置
+            0.5, 0.5, 1.0, 1.0,     // 右下角顶点位置
+            0.5, -0.5, 1.0, 0.0     // 右上角顶点位置
+        ]);
+
+        const fSize = source.BYTES_PER_ELEMENT;
+
+        // 获取元素字节数
+        const elementBytes = source.BYTES_PER_ELEMENT;
+
+        // 系列尺寸
+        const posSize = 2;
+        const pinSize = 2;
+
+        // 类目尺寸
+        const categorySize = posSize + pinSize;
+
+        // 类目字节数
+        const categoryBytes = categorySize * elementBytes;
+
+        // 系列字节索引位置
+        const posByteIndex = 0; // 顶点
+        const pinByteIndex = posSize * elementBytes; // 颜色
+
+        // 顶点总数大小
+        const sourceSize = source.length / categorySize;
+
+        // 2、建立顶点缓冲区对象
+        const sourceBuffer = gl.createBuffer();
+
+        // 3、绑定缓冲对象
+        gl.bindBuffer(gl.ARRAY_BUFFER, sourceBuffer);
+
+        // 4、写入数据
+        gl.bufferData(gl.ARRAY_BUFFER, source, gl.STATIC_DRAW);
+
+
+
+        // 5、获取顶点着色器存储空间 attribute 中的a_Position变量;
+        const a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+
+        // 6、修改attribute 变量
+        gl.vertexAttribPointer(
+            a_Position,
+            posSize,
+            gl.FLOAT,
+            false,
+            categoryBytes,
+            posByteIndex
+        );
+
+        // 7、赋能 (开起多点批处理)
+        gl.enableVertexAttribArray(a_Position);
+
+
+
+        // 5、获取顶点着色器存储空间 attribute 中的a_Pin变量;
+        const a_Pin = gl.getAttribLocation(gl.program, 'a_Pin');
+
+        // 6、修改attribute 变量
+        gl.vertexAttribPointer(
+            a_Pin, // 顶点
+            pinSize, // 顶点系列尺寸
+            gl.FLOAT,   // 元素的数据类型
+            false,  // 是否归一化
+            categoryBytes,  //  类目字节数
+            pinByteIndex    //  顶点字节索引位置
+        );
+
+        // 7、赋能 (开起多点批处理)
+        gl.enableVertexAttribArray(a_Pin);
+
+
+        /**
+         * 三个角色
+         *      - 纹理单元
+         *      - 纹理对象
+         *      - Image 图像
+        */
+        // 纹理单元(激活0号)
+        gl.activeTexture(gl.TEXTURE0);
+        // 建立纹理对象
+        const texture = gl.createTexture();
+        // 将纹理对象 装进 纹理单元
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+
+        // 建立图像对象
+        const image = new Image();
+        // image.src = 'http://www.muguilin.com/bg1.aa9d864488c29b6fef46.jpg'; 
+        // image.src = 'https://img.kaikeba.com/70350130700202jusm.png'; 
+        image.src = 'http://img.yxyy.name/erha.jpg';    // 注：要先让服务器向其它域名放权，如 Apache 服务器需要这样设置 Header set Access-Control-Allow-Origin "*"
+        
+        // 跨域处理
+        image.setAttribute("crossOrigin", 'Anonymous');
+        /**
+         * setAttribute()方法中的crossOrigin属性值有以下3种：
+         *      1、undefined 是默认值，表示不需要向其它域名的服务器请求资源共享。
+         *      2、anonymous  向其它域名的服务器请求资源共享，但不需要向其发送任何信息。
+         *      3、use-credentials  向其它域名的服务器请求资源共享，并发送 cookies 等信息，服务器会通过这些信息决定是否授权。
+        */
+
+        image.onload = function (target) {
+
+           // gl.texImage2D(target, level, internalformat, width, height, border, format, type, data);
+           gl.texImage2D(
+                gl.TEXTURE_2D,  // 纹理类型
+                0,  // 基本图像等级
+                gl.RGB,
+                gl.RGB,
+                gl.UNSIGNED_BYTE,
+                image
+            );
+
+            // gl.texParameteri(target, pname, param);  //  纹理类型, 纹理参数的名称, 与pname相对应的纹理参数值
+            gl.texParameteri(
+                gl.TEXTURE_2D,  // 二维纹理
+                gl.TEXTURE_MIN_FILTER,  //  TEXTURE_MIN_FILTER：纹理缩小滤波器(纹理在webgl图形中被缩小的情况)。TEXTURE_MAG_FILTER：纹理放大滤波器(纹理在webgl图形中被放大的情况)。
+                gl.LINEAR   // 线性滤镜
+            );
+
+            const u_Sampler = gl.getUniformLocation(gl.program, 'u_Sampler');
+            gl.uniform1i(u_Sampler, 0);
+
+            render();
+        };
+
+        // 渲染
+        function render() {
+            // 刷底色 使用上面设置的颜色，清空绘图区
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            // 执行绘制 三角带
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, sourceSize);
+        };
+
+
+
+
+
+        /**
+         * 绘制顶点方法 drawArrays()
+         *  gl.drawArrays(mode, first, count); 方法用于从向量数组中绘制图元。
+         *
+         *  // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/drawArrays
+         *
+         *  参数说明：
+         *      mode 【绘图模式】指定绘制图元的方式，可能值如下：
+         *          点：
+         *              gl.POINTS: 绘制一系列点。
+         * 
+         *          线：
+         *              gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
+         *              gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
+         *              gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
+         *              
+         *          面：
+         *              gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
+         *              gl.TRIANGLE_STRIP：绘制一个三角带。
+         *              gl.TRIANGLE_FAN：绘制一个三角扇。
+         *      
+         *      first【绘图起点】 指定从哪个点开始绘制。
+         *      count 【绘制数量】指定绘制需要使用到多少个点。
+         *
+         *
+         *
+         * 【WebGl 同步绘图原理总结】：
+         *
+         *   webgl 的同步绘图的现象，其实是由webgl 底层内置的颜色缓冲区导致的。
+         *
+         *   “胸有成竹”大家知道吧？这个颜色缓冲区就是“胸有成竹”的胸，它在电脑里会占用一块内存。
+         *
+         *   在我们使用webgl 绘图的时候，是先在颜色缓冲区中画出来，这样的图像还在胸中，所以外人看不见，只有webgl系统自己知道。
+         *
+         *   在我们想要将图像显示出来的时候，那就照着颜色缓冲区中的图像去画，这个步骤是webgl 内部自动完成的，我们只要执行绘图命令即可。
+         *
+         *   颜色缓冲区中存储的图像，只在当前线程有效。比如我们先在js 主线程中绘图，主线程结束后，会再去执行信息队列里的异步线程。
+         *
+         *   在执行异步线程时，颜色缓冲区就会被webgl 系统重置，我们曾经在主线程里的“胸有成竹”也就没了，既然没了，也就画不出那时的图像了。
+        
+         */
+
+    </script>
+</body>
+
+</html>
