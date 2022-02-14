@@ -39,7 +39,7 @@ export default class Poly {
 
             this.updateBuffer();
 
-            // 获取顶点着色器存储空间 attribute 中gl_Position声明的的my_Position变量;
+            // 获取顶点着色器存储空间 attribute 中gl_Position声明的的a_Position变量;
             const gl_Position = gl.getAttribLocation(gl.program, positionName);
 
             // 修改 顶点着色器存储空间 变量;

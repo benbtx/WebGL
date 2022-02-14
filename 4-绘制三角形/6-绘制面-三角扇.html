@@ -45,13 +45,13 @@
     <!-- 顶点着色器-主体架构 -->
     <script id="vertexShader" type="x-shader/x-vertex">
         // 声明项点位置变量   attribute是用于在顶点着色器中限定顶点相关的数据的
-        attribute vec4 my_Position;
+        attribute vec4 a_Position;
         attribute float my_PointSize;
 
         void main() {
             // 点位            x,   y,   Z 
             // gl_Position = vec4(0.0, 0.0, 0.0, 1.0); // 四维向量 x值越大越向右移, y值越大越向上移, z深度；默认0，0是画布的正中心，值为1 或 -1 时，是高度 或 宽度的一半(还要减去图形的一半)，
-            gl_Position = my_Position;
+            gl_Position = a_Position;
 
             // 尺寸 注：面可不用设置大小
             // gl_PointSize = my_PointSize; // 注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！
@@ -118,15 +118,15 @@
         gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
 
-        // 5、获取顶点着色器存储空间 attribute 中的my_Position变量;
-        const my_Position = gl.getAttribLocation(gl.program, 'my_Position');
+        // 5、获取顶点着色器存储空间 attribute 中的a_Position变量;
+        const a_Position = gl.getAttribLocation(gl.program, 'a_Position');
 
         // 6、修改attribute 变量
         // gl.vertexAttribPointer(index, size, type, normalized, stride, offset);
-        gl.vertexAttribPointer(my_Position, 2, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 0, 0);
 
         // 7、赋能 批处理
-        gl.enableVertexAttribArray(my_Position);
+        gl.enableVertexAttribArray(a_Position);
 
         // 获取顶点着色器存储空间;
         const my_PointSize = gl.getAttribLocation(gl.program, 'my_PointSize');

@@ -45,19 +45,19 @@
     <!-- 顶点着色器-主体架构 -->
     <script id="vertexShader" type="x-shader/x-vertex">
         // 声明项点位置变量   attribute是用于在顶点着色器中限定顶点相关的数据的
-        attribute vec4 my_Position;
+        attribute vec4 a_Position;
         attribute float my_PointSize;
 
         /* attribute说明：
             attribute：是用于存储限定符（变量声明关键字），是专门用于向外部导出与点位相磁的对象的，类似于ES6中的export。 
             vec4：变量类型，vec4是4维矢量对象
-            my_Position：变量名，在JS中会根据这个变量名导入变量。这个变量是一个指针，它在内存中是指向实际数据的存储位置，当我们在JS中修改了对应的值，那么在着色器中所对应的数据也会实修改。
+            a_Position：变量名，在JS中会根据这个变量名导入变量。这个变量是一个指针，它在内存中是指向实际数据的存储位置，当我们在JS中修改了对应的值，那么在着色器中所对应的数据也会实修改。
         */
 
         void main() {
             // 点位            x,   y,   Z 
             // gl_Position = vec4(0.0, 0.0, 0.0, 1.0); // 四维向量 x值越大越向右移, y值越大越向上移, z深度；默认0，0是画布的正中心，值为1 或 -1 时，是高度 或 宽度的一半(还要减去图形的一半)，
-            gl_Position = my_Position;
+            gl_Position = a_Position;
 
             // 尺寸
             gl_PointSize = my_PointSize; // 注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HTML5-WebGL- GLSL ES语言 - 打印多个向量</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: purple;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <img src="./img/打印多个向量.jpg" alt="" />
+    <canvas id="canvas" width="300" height="150">
+        对不起！当您能看到这句话时，表示您当前的浏览器不支持canvas标签（IE9级以上才兼容），建议您升级浏览器后再试！
+        canvas尺寸：默认大小：宽300px, 高150px，最大尽量在4096px以内（当然不同的浏览器也会不一样）；
+        canvas尺寸设置：建议直接在canvas标签上设置，或者是在js中的canvas.width/height上设置，不建议在CSS样式中设置，但（在CSS中的优先级最高）；
+
+        Canvas的精彩：
+        Canvas精彩之处在于程序算法和艺术的结合。
+        它可以用理性的逻辑算法来寻找艺术中美的规律。
+        若想深入研究Canvas，可以再学习图形架构、图像算法、动画算法、艺术设计等。
+    </canvas>
+
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        attribute vec4 a_Position;
+        void main() {
+            // 点位
+            gl_Position = a_Position;
+        }
+    </script>
+
+
+    <!-- 片元着色器-内容装饰 片元===像素 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+
+        uniform vec2 u_CanvasSize; // 用于接收画布尺寸
+
+        float half_w = u_CanvasSize.x / 2.0;    // 画布宽度的1半
+        float half_h = u_CanvasSize.y / 2.0;    // 画布高度的1半
+
+        void main() {
+            // 4维矩阵
+            mat4 m = mat4(
+                255, 0, 0, 255,
+                255, 255, 0, 255,
+                0, 255, 0, 255,
+                0, 0, 255, 255
+            );
+           
+            bool xb = gl_FragCoord.x < half_w;
+            bool yb = gl_FragCoord.y < half_h;
+            
+            // 判断绘制各色块
+            if(yb) {
+                if(xb) {  
+                    // 红色块
+                    gl_FragColor = m[0] / 255.0;  // m[0] => 255, 0, 0, 255,
+                } else  {
+                    // 黄色块
+                    gl_FragColor = m[1] / 255.0;    // m[1] => 255, 255, 0, 255,
+                }
+            }
+            else {
+                if(xb) {
+                    // 绿色块
+                    gl_FragColor = m[2] / 255.0;    // m[2] => 0, 255, 0, 255,
+                } else {
+                    // 蓝色块
+                    gl_FragColor = m[3] / 255.0;    // m[3] => 0, 0, 255, 255,
+                }
+            }
+        }
+    </script>
+
+
+    <script type="module">
+        import { initShaders } from './js/webgl@utils.js';
+        import Poly from './js/Poly2.js';
+
+        console.log('设备像素比:', window.devicePixelRatio);
+
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        const [width, height] = [window.innerWidth, window.innerHeight];
+
+        // 设置画布宽高
+        canvas.width = width;
+        canvas.height = height;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+
+        // 初始化着色器 生成 关联关系 程序对象gl.program
+        initShaders(gl, vsSource, fsSource);
+
+        // 设置清空绘图区的颜色
+        gl.clearColor(0, 0, 0, 1);
+
+
+        /**
+         * 
+         * 打印多个向量 - 按比例打印
+        */
+
+        // 比例容器
+        const source = new Float32Array([
+            -1, 1,
+            -1, -1,
+            1, 1,
+            1, -1
+        ]);
+
+        const rect = new Poly({
+            gl,
+            source,
+            type: 'TRIANGLE_STRIP',
+            attributes: {
+                a_Position: {
+                    size: 2,
+                    index: 0
+                }
+            },
+            uniforms: {
+                u_CanvasSize: {
+                    type: 'uniform2fv',
+                    value: [canvas.width, canvas.height]
+                }
+            }
+        })
+
+
+        // 使用上面设置的颜色，清空绘图区
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        rect.draw();
+
+        const [w, h] = [2, 2];
+        for (let y = 0; y < 2; y++) {
+            for (let x = 0; x < 2; x++) {
+                const px = canvas.width * (x + 0.5) / w;
+                const py = canvas.height * (y + 0.5) / h;
+                logPixels(px, py);
+            }
+        };
+
+        function logPixels(x, y) {
+            const pixels = new Uint8Array(4);
+            gl.readPixels(
+                x, y,
+                1, 1,
+                gl.RGBA,
+                gl.UNSIGNED_BYTE,
+                pixels
+            );
+            console.log(pixels);
+        };
+
+
+    </script>
+</body>

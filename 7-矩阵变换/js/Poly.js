@@ -8,7 +8,7 @@ const defAttr = () => ({
     pointsArr: [],   // 顶点数据集合，在被赋值的时候会做两件事, 1、更新count 顶点数量，数据运算尽量不放渲染方法里。2、向缓冲区内写入顶点数据
     geoData: [], // 模型数据，对象数组，可解析出pointsArr 顶点数据
     size: 2,    // 顶点分量的数目
-    positionName: 'my_Position',    // 代表顶点位置的attribute 变量名
+    positionName: 'a_Position',    // 代表顶点位置的attribute 变量名
     count: 0,   // 顶点数量
     types: ['POINTS'],  // 绘图方式，可以用多种方式绘图
     circleDot: false,   // 绘制的是否是圆点
@@ -37,7 +37,7 @@ export default class Poly {
 
             this.updateBuffer();
 
-            // 获取顶点着色器存储空间 attribute 中gl_Position声明的的my_Position变量;
+            // 获取顶点着色器存储空间 attribute 中gl_Position声明的的a_Position变量;
             const gl_Position = gl.getAttribLocation(gl.program, positionName);
 
             // 修改 顶点着色器存储空间 变量;

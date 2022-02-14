@@ -34,9 +34,9 @@
     -->
     <!-- 顶点着色器-主体架构 -->
     <script id="vertexShader" type="x-shader/x-vertex">
-        attribute vec4 my_Position;
+        attribute vec4 a_Position;
         void main(){
-            gl_Position = my_Position;
+            gl_Position = a_Position;
             gl_PointSize = 20.0; // 以px像素为单位，表示宽度 和 高度都是20.0
         }
     </script>
@@ -73,9 +73,9 @@
         initShaders(gl, vsSource, fsSource);
 
 
-        // // 获取顶点着色器存储空间 attribute 中的my_Position变量;
-        // const my_Position = gl.getAttribLocation(gl.program, 'my_Position');
-        // // gl.vertexAttrib2f(my_Position, x, y);
+        // // 获取顶点着色器存储空间 attribute 中的a_Position变量;
+        // const a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+        // // gl.vertexAttrib2f(a_Position, x, y);
 
         // // 获取片元着色器存储空间;
         // const my_FragColor = gl.getUniformLocation(gl.program, 'my_FragColor');

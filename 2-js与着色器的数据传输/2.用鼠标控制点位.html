@@ -47,18 +47,18 @@
     <!-- 顶点着色器-主体架构 -->
     <script id="vertexShader" type="x-shader/x-vertex">
         // 声明项点位置变量   
-        attribute vec4 my_Position;  
+        attribute vec4 a_Position;  
 
         /* attribute说明：
             attribute：是用于存储限定符（变量声明关键字），是专门用于向外部导出与点位相磁的对象的，类似于ES6中的export。 
             vec4：变量类型，vec4是4维矢量对象
-            my_Position：变量名，在JS中会根据这个变量名导入变量。这个变量是一个指针，它在内存中是指向实际数据的存储位置，当我们在JS中修改了对应的值，那么在着色器中所对应的数据也会实修改。
+            a_Position：变量名，在JS中会根据这个变量名导入变量。这个变量是一个指针，它在内存中是指向实际数据的存储位置，当我们在JS中修改了对应的值，那么在着色器中所对应的数据也会实修改。
         */
 
         void main() {
             // 点位            x,   y,   Z 
             // gl_Position = vec4(0.0, 0.0, 0.0, 1.0); // 四维向量 x值越大越向右移, y值越大越向上移, z深度；默认0，0是画布的正中心，值为1 或 -1 时，是高度 或 宽度的一半(还要减去图形的一半)，
-            gl_Position = my_Position;
+            gl_Position = a_Position;
 
             // 尺寸
             gl_PointSize = 50.0; // 注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！
@@ -94,13 +94,13 @@
         // 初始化着色器 生成 关联关系 程序对象
         initShaders(gl, vsSource, fsSource);
 
-        // 获取顶点着色器存储空间：在JS中要通过gl.getAttribLocation()方法来，获取在顶点着色器中用 attribute 声明的变量 my_Position;
-        const my_Position = gl.getAttribLocation(gl.program, 'my_Position');
+        // 获取顶点着色器存储空间：在JS中要通过gl.getAttribLocation()方法来，获取在顶点着色器中用 attribute 声明的变量 a_Position;
+        const a_Position = gl.getAttribLocation(gl.program, 'a_Position');
 
-        // 修改my_Position变量  gl.vertexAttrib4f(index, v0, v1, v2, v3);
-        // gl.vertexAttrib1f(my_Position, 0.5)      // x值越大越向右移
-        gl.vertexAttrib2f(my_Position, 0, 0.2)      // x, y值越大越向上移
-        // gl.vertexAttrib3f(my_Position, 0, 0.5, 0);  // x, y, z景深  
+        // 修改a_Position变量  gl.vertexAttrib4f(index, v0, v1, v2, v3);
+        // gl.vertexAttrib1f(a_Position, 0.5)      // x值越大越向右移
+        gl.vertexAttrib2f(a_Position, 0, 0.2)      // x, y值越大越向上移
+        // gl.vertexAttrib3f(a_Position, 0, 0.5, 0);  // x, y, z景深  
         // gl.vertexAttrib4f(index, v0, v1, v2, v3);
 
 
@@ -180,7 +180,7 @@
 
 
             // 用鼠标控制点位
-            gl.vertexAttrib2f(my_Position, x, y);
+            gl.vertexAttrib2f(a_Position, x, y);
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.drawArrays(gl.POINTS, 0, 1);
         });

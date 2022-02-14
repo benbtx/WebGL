@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HTML5-WebGL- GLSL ES语言 - 打印多个向量(按比例打印)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: purple;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <img src="./img/打印向量.png" alt="" />
+    <canvas id="canvas" width="300" height="150">
+        对不起！当您能看到这句话时，表示您当前的浏览器不支持canvas标签（IE9级以上才兼容），建议您升级浏览器后再试！
+        canvas尺寸：默认大小：宽300px, 高150px，最大尽量在4096px以内（当然不同的浏览器也会不一样）；
+        canvas尺寸设置：建议直接在canvas标签上设置，或者是在js中的canvas.width/height上设置，不建议在CSS样式中设置，但（在CSS中的优先级最高）；
+
+        Canvas的精彩：
+        Canvas精彩之处在于程序算法和艺术的结合。
+        它可以用理性的逻辑算法来寻找艺术中美的规律。
+        若想深入研究Canvas，可以再学习图形架构、图像算法、动画算法、艺术设计等。
+    </canvas>
+
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        void main() {
+            // 点位             x,   y,   Z 
+            gl_Position = vec4(0.0, 0.0, 0.0, 1.0); // 四维向量 x值越大越向右移, y值越大越向上移, z深度；默认0，0是画布的正中心，值为1 或 -1 时，是高度 或 宽度的一半(还要减去图形的一半)，
+
+            // 尺寸
+            gl_PointSize = 512.0; // 注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！
+
+        }
+    </script>
+
+
+    <!-- 片元着色器-内容装饰 片元===像素 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+
+        // 4维向量的加法运算
+        vec4 v = vec4(1, 2, 3, 4) + vec4(5, 6, 7, 8);
+
+        // 4维矩阵
+        mat4 m = mat4(
+            255, 0, 0, 255,
+            255, 255, 0, 255,
+            0, 255, 0, 255,
+            0, 0, 255, 255
+        );
+
+        void main() {
+            // 设置片元色
+            gl_FragColor = v / 255.0; // 因为gl_FragColor 中1个单位的分量就相当于canvas画布中255的分量值，所以我让上面的向量v直接除以255。
+                                    // 注：此方法只适用于向量因子在0-255的数据。我们在此先不考虑太深，先把语法跑通。
+           
+            // 获取当前片元到点的中心位置距离
+            float dist = distance(gl_PointCoord, vec2(0.5, 0.5));  // distance()中心位置距离
+            
+            // 判断各圆的填充范围
+            if(dist >= 0.0 && dist < 0.125) {
+                // 红色圆 圆心从0.0起，到0.125结束
+                gl_FragColor = m[0] / 255.0;  // m[0] => 255, 0, 0, 255,
+            }
+            else if(dist >= 0.125 && dist < 0.25) {
+                // 黄色圆
+                gl_FragColor = m[1] / 255.0;    // m[1] => 255, 255, 0, 255,
+            }
+            else if(dist >= 0.25 && dist < 0.375) {
+                // 绿色圆
+                gl_FragColor = m[2] / 255.0;    // m[2] => 0, 255, 0, 255,
+            }
+            else if(dist >= 0.375 && dist < 0.5) {
+                // 蓝色圆
+                gl_FragColor = m[3] / 255.0;    // m[3] => 0, 0, 255, 255,
+            } else {
+                // 不填充
+                discard;
+            }
+        }
+    </script>
+
+
+    <script type="module">
+
+        function loadShader(gl, type, source) {
+            //根据着色类型，建立着色器对象
+            const shader = gl.createShader(type);
+            //将着色器源文件传入着色器对象中
+            gl.shaderSource(shader, source);
+            //编译着色器对象
+            gl.compileShader(shader);
+            //返回着色器对象
+            return shader;
+        };
+
+        /**
+         * 初始化着色器 
+         * 功能：
+         *      1、解析着色器文本，整合到程序对象里。
+         *      2、关联webgl上下文对象，实现JS 和 GLSL-ES 两种语言之间的相互通信。
+        */
+        function initShaders(gl, vsSource, fsSource) {
+            //创建程序对象
+            const program = gl.createProgram();
+            //建立着色对象
+            const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+            //把顶点着色对象装进程序对象中
+            gl.attachShader(program, vertexShader);
+            //把片元着色对象装进程序对象中
+            gl.attachShader(program, fragmentShader);
+            //连接webgl上下文对象和程序对象
+            gl.linkProgram(program);
+            //启动程序对象
+            gl.useProgram(program);
+            //将程序对象挂到上下文对象上（这是自定义的，主要是为了方便后面在用到程序对象时，好直接在gl对象中获取！！）
+            gl.program = program;
+            return true;
+        };
+
+
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        const [width, height] = [window.innerWidth, window.innerHeight];
+
+        // 设置画布宽高
+        canvas.width = width;
+        canvas.height = height;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+
+        // 初始化着色器 生成 关联关系 程序对象
+        initShaders(gl, vsSource, fsSource);
+
+        // 设置清空绘图区的颜色
+        gl.clearColor(0, 0, 0, 1);
+
+        // 使用上面设置的颜色，清空绘图区
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.drawArrays(gl.POINTS, 0, 1);
+
+
+
+        /**
+         * 
+         * 打印多个向量
+        */
+        function logPixels(offset = 0) {
+            // offset 圆偏移距离
+            // 像素容器
+            const pixels = new Uint8Array(4); // 4 是数组的长度
+
+            // 采集像素
+            gl.readPixels(
+                canvas.width / 2 + offset, canvas.height / 2 + offset,
+                1, 1,
+                gl.RGBA,
+                gl.UNSIGNED_BYTE,
+                pixels
+            );
+
+            console.log('打印多个向量：', pixels);
+        };
+
+        // 圆环宽度
+        const cw = 512 / 8;  // 512是 顶点着色器尺寸 gl_PointSize
+        // 循环打印4个圆
+        for (let i = 0; i < 4; i++) {
+            logPixels(cw * i + cw / 2);
+        }
+
+       
+        /**
+         * 绘制顶点方法 drawArrays()
+         *  gl.drawArrays(mode, first, count); 方法用于从向量数组中绘制图元。
+         *
+         *  // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/drawArrays
+         *
+         *  参数说明：
+         *      mode 【绘图模式】指定绘制图元的方式，可能值如下：
+         *          点：
+         *              gl.POINTS: 绘制一系列点。
+         * 
+         *          线：
+         *              gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
+         *              gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
+         *              gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
+         *              
+         *          面：
+         *              gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
+         *              gl.TRIANGLE_STRIP：绘制一个三角带。
+         *              gl.TRIANGLE_FAN：绘制一个三角扇。
+         *      
+         *      first【绘图起点】 指定从哪个点开始绘制。
+         *      count 【绘制数量】指定绘制需要使用到多少个点。
+         *
+         *
+         *
+         * 【WebGl 同步绘图原理总结】：
+         *
+         *   webgl 的同步绘图的现象，其实是由webgl 底层内置的颜色缓冲区导致的。
+         *
+         *   “胸有成竹”大家知道吧？这个颜色缓冲区就是“胸有成竹”的胸，它在电脑里会占用一块内存。
+         *
+         *   在我们使用webgl 绘图的时候，是先在颜色缓冲区中画出来，这样的图像还在胸中，所以外人看不见，只有webgl系统自己知道。
+         *
+         *   在我们想要将图像显示出来的时候，那就照着颜色缓冲区中的图像去画，这个步骤是webgl 内部自动完成的，我们只要执行绘图命令即可。
+         *
+         *   颜色缓冲区中存储的图像，只在当前线程有效。比如我们先在js 主线程中绘图，主线程结束后，会再去执行信息队列里的异步线程。
+         *
+         *   在执行异步线程时，颜色缓冲区就会被webgl 系统重置，我们曾经在主线程里的“胸有成竹”也就没了，既然没了，也就画不出那时的图像了。
+        
+         */
+
+    </script>
+</body>

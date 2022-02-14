@@ -34,9 +34,9 @@
     -->
     <!-- 顶点着色器-主体架构 -->
     <script id="vertexShader" type="x-shader/x-vertex">
-        attribute vec4 my_Position;
+        attribute vec4 a_Position;
         void main(){
-            gl_Position = my_Position;
+            gl_Position = a_Position;
             gl_PointSize = 20.0; // 以px像素为单位，表示宽度 和 高度都是20.0
         }
     </script>
@@ -72,9 +72,9 @@
         initShaders(gl, vsSource, fsSource);
 
 
-        // 获取顶点着色器存储空间 attribute 中的my_Position变量;
-        const my_Position = gl.getAttribLocation(gl.program, 'my_Position');
-        // gl.vertexAttrib2f(my_Position, x, y);
+        // 获取顶点着色器存储空间 attribute 中的a_Position变量;
+        const a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+        // gl.vertexAttrib2f(a_Position, x, y);
 
         // 获取片元着色器存储空间;
         const my_FragColor = gl.getUniformLocation(gl.program, 'my_FragColor');
@@ -120,12 +120,12 @@
         // gl.bufferData(target, size, srcData Optional, usage, srcOffset, length Optional)
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pointsArr), gl.STATIC_DRAW);
 
-        // 修改 顶点着色器存储空间 attribute 中的my_Position变量;
+        // 修改 顶点着色器存储空间 attribute 中的a_Position变量;
         // gl.vertexAttribPointer(index, size, type, normalized, stride, offset)
-        gl.vertexAttribPointer(my_Position, 2, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 0, 0);
 
         // 赋能-批处理（如果有多个顶点时，需要批处理）
-        gl.enableVertexAttribArray(my_Position);
+        gl.enableVertexAttribArray(a_Position);
 
         // 设置颜色
         gl.clearColor(0, 0, 0, 1);

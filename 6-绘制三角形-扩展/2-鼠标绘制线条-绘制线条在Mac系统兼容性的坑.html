@@ -35,11 +35,11 @@
     -->
     <!-- 顶点着色器-主体架构 -->
     <script id="vertexShader" type="x-shader/x-vertex">
-        attribute vec4 my_Position;
+        attribute vec4 a_Position;
         attribute float my_PointSize;
 
         void main(){
-            gl_Position = my_Position;
+            gl_Position = a_Position;
             gl_PointSize = my_PointSize; // 以px像素为单位，表示宽度 和 高度都是20.0
         }
     </script>
