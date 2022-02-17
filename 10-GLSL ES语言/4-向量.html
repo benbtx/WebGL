@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HTML5-WebGL- GLSL ES语言 - 向量</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; */
+        }
+
+        #canvas {
+            /* width: 100vw;
+            height: 100vh; */
+            background-color: purple;
+
+            /*点击穿透*/
+            /* pointer-events: none; */
+        }
+    </style>
+</head>
+
+<body>
+    <img src="./img/向量.jpg" alt="" />
+    <canvas id="canvas" width="300" height="150">
+        对不起！当您能看到这句话时，表示您当前的浏览器不支持canvas标签（IE9级以上才兼容），建议您升级浏览器后再试！
+        canvas尺寸：默认大小：宽300px, 高150px，最大尽量在4096px以内（当然不同的浏览器也会不一样）；
+        canvas尺寸设置：建议直接在canvas标签上设置，或者是在js中的canvas.width/height上设置，不建议在CSS样式中设置，但（在CSS中的优先级最高）；
+
+        Canvas的精彩：
+        Canvas精彩之处在于程序算法和艺术的结合。
+        它可以用理性的逻辑算法来寻找艺术中美的规律。
+        若想深入研究Canvas，可以再学习图形架构、图像算法、动画算法、艺术设计等。
+    </canvas>
+
+
+    <!-- 
+        script中建立顶点着色器和片元着色器，
+        里面使用的是：WebGL GLSL ES语法，`GLSL ES`编程语言是在`OpenGL`的着色器语言（`GLSL`）的基础上，删除和简化一部分功能后形成的
+        https://www.khronos.org/
+    -->
+    <!-- 顶点着色器-主体架构 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        // 基本规范：
+        /*
+            1.大小写敏感
+            2.语句末尾必须要有分号
+            3.以main函数为主函数
+
+        命名规范：
+            - 只能包括a-z,A-Z,0-9,_
+            - 变量名首字母不能是数字
+            - 不能是GLSL 关键字，如attribute,vec4,bool
+            - 不能是GLSL 保留字，如cast,class,long
+            - 不能以下单词开头：gl_, webgl\_, \_webgl\_
+            
+        
+        // 数据类型：
+        /**
+            数字型：1、整型int  2、浮点型float ;
+            布尔型: 布尔bool
+            例如：
+                int i = 1;
+                float f = 1.0;
+                bool b = true;
+            比较：
+                int i=8; // ✔
+                int i=8.0; // ✖
+                float f=8; // ✖
+                float f=8.0; // ✔
+        */
+
+        // 类型转换：
+        /**
+            - 浮点转整数：int(float)
+            - 布尔转整数：int(bool)
+            - 整数转浮点：float(int)
+            - 布尔转浮点：float(bool)
+            - 整数转布尔：bool(int)
+            - 浮点转布尔：bool(float)
+        */
+       
+        void main() {
+
+            int i = 200;    // 整型
+
+            float x = 0.0;
+            float y = 0.5;
+
+            float size = 10.0;  // 浮点
+    
+            bool b = true;  // 布尔
+    
+            if(b) {
+                size = float(i);    // 类型转换
+            }
+            
+            // 点位
+            gl_Position = vec4(x, y, 0.0, 1.0); // 四维向量 x值越大越向右移, y值越大越向上移, z深度；默认0，0是画布的正中心，值为1 或 -1 时，是高度 或 宽度的一半(还要减去图形的一半)，
+
+            // 尺寸
+            gl_PointSize = size; // 注：在GLSL ES语言中，每条语句后面要加上分号“;”哦！！！
+        }
+    </script>
+
+
+    <!-- 片元着色器-内容装饰 片元===像素 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        // 设置浮点数据的精度 mediump：中等
+        precision mediump float;
+
+        /* 向量类型
+            GLSL ES 支持2、3、4维向量，根据分量的数据类型，向量可以分为3类：
+                    2维，3维， 4维
+                - vec2、vec3、vec4：分量是 浮点数
+                - ivec2、ivec3、ivec4：分量是 整数
+                - bvec2、bvec3、bvec4：分量是 布尔值
+        */
+
+        // 创建向量
+        vec3 v3 = vec3(1.0, 0.0, 0.5);   // (1.0, 0.0, 0.5)
+        vec2 v2 = vec2(v3);              // (1.0, 0.0) 
+        vec4 v4 = vec4(1.0);        	 // (1.0,1.0,1.0,1.0)
+        vec4 v5 = vec4(1.0, 0.0, 1.0, 1.0);
+
+        /* 向量分量的访问
+           - 通过分量属性访问
+                v4.x, v4.y, v4.z, v4.w  // 齐次坐标
+                v4.r, v4.g, v4.b, v4.a  // 色值
+                v4.s, v4.t, v4.p, v4.q  // 纹理坐标
+
+            - vec4 v4 = vec4(1.0,2.0,3.0,4.0); 
+                v4.xy //(1.0,2.0)
+                v4.yx //(2.0,1.0)
+                v4.xw //(1.0,4.0)
+                v4.xyzw //(1.0,2.0,3.0,4.0)
+
+            - 通过分量索引访问
+                v4[0], v4[1], v4[2], v4[3]
+        */
+
+        /* 向量赋值
+            v4.x = 1.0;
+            v4[0] = 1.0;
+            v4.xy = vec2(1.0,2.0);
+        */
+        //v5[1] = 1.0;
+        //v5.t = 1.0;
+
+        float r = 1.0;
+        float g = 0.0;
+        float b = 1.0;
+        float a = 1.0;
+
+        void main() {
+            //gl_FragColor = vec4(r, g, b, a); // 紫色 四维向量 r, b, b, a  
+
+            //gl_FragColor = vec4(r, v3.y, v4[2], a); // 紫色 四维向量 r, b, b, a  
+
+            //gl_FragColor = vec4(v4.xy, v4[2], a); // 紫色 四维向量 r, b, b, a  
+
+            //gl_FragColor = vec4(v5.xyzw); 
+
+            //gl_FragColor = vec4(v5.rgba); 
+
+            gl_FragColor = vec4(v5.stpq); 
+        }
+    </script>
+
+
+    <script type="module">
+        import { initShaders } from './js/webgl@utils.js';
+
+        // 获取画布DOM
+        const canvas = document.querySelector('#canvas');
+        const [width, height] = [window.innerWidth, window.innerHeight];
+
+        // 设置画布宽高
+        canvas.width = width;
+        canvas.height = height;
+
+        // 获取webgl 三维绘图上下文对象
+        const gl = canvas.getContext('webgl');
+
+        // 获取着色器文本
+        const vsSource = document.querySelector('#vertexShader').innerText;
+        const fsSource = document.querySelector('#fragmentShader').innerText;
+
+
+        // 初始化着色器 生成 关联关系 程序对象gl.program
+        initShaders(gl, vsSource, fsSource);
+
+        // 设置清空绘图区的颜色
+        gl.clearColor(0, 0, 0, 1);
+
+
+        // 使用上面设置的颜色，清空绘图区
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.POINTS, 0, 1)
+
+        /**
+         * 绘制顶点方法 drawArrays()
+         *  gl.drawArrays(mode, first, count); 方法用于从向量数组中绘制图元。
+         *
+         *  // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/drawArrays
+         *
+         *  参数说明：
+         *      mode 【绘图模式】指定绘制图元的方式，可能值如下：
+         *          点：
+         *              gl.POINTS: 绘制一系列点。
+         * 
+         *          线：
+         *              gl.LINES: 绘制一系列单独线段。每两个点作为端点，线段之间不连接。
+         *              gl.LINE_STRIP: 绘制一个线条。即，绘制一系列线段，上一点连接下一点。
+         *              gl.LINE_LOOP: 绘制一个线圈。即，绘制一系列线段，上一点连接下一点，并且最后一点与第一个点相连。
+         *              
+         *          面：
+         *              gl.TRIANGLES: 绘制一系列三角形。每三个点作为顶点
+         *              gl.TRIANGLE_STRIP：绘制一个三角带。
+         *              gl.TRIANGLE_FAN：绘制一个三角扇。
+         *      
+         *      first【绘图起点】 指定从哪个点开始绘制。
+         *      count 【绘制数量】指定绘制需要使用到多少个点。
+         *
+         *
+         *
+         * 【WebGl 同步绘图原理总结】：
+         *
+         *   webgl 的同步绘图的现象，其实是由webgl 底层内置的颜色缓冲区导致的。
+         *
+         *   “胸有成竹”大家知道吧？这个颜色缓冲区就是“胸有成竹”的胸，它在电脑里会占用一块内存。
+         *
+         *   在我们使用webgl 绘图的时候，是先在颜色缓冲区中画出来，这样的图像还在胸中，所以外人看不见，只有webgl系统自己知道。
+         *
+         *   在我们想要将图像显示出来的时候，那就照着颜色缓冲区中的图像去画，这个步骤是webgl 内部自动完成的，我们只要执行绘图命令即可。
+         *
+         *   颜色缓冲区中存储的图像，只在当前线程有效。比如我们先在js 主线程中绘图，主线程结束后，会再去执行信息队列里的异步线程。
+         *
+         *   在执行异步线程时，颜色缓冲区就会被webgl 系统重置，我们曾经在主线程里的“胸有成竹”也就没了，既然没了，也就画不出那时的图像了。
+        
+         */
+
+    </script>
+</body>
